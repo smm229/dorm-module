@@ -1,10 +1,13 @@
 {
-    "name": "nwidart/dorm",
-    "description": "",
+    "name": "smm229/dorm",
+    "description": "laravel模块",
+    "support": {  
+       "source": "https://github.com/smm229/dorm-module"  
+    },
     "authors": [
         {
-            "name": "Nicolas Widart",
-            "email": "n.widart@gmail.com"
+            "name": "yanxx",
+            "email": "648128278@qq.com"
         }
     ],
     "extra": {
