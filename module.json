@@ -1,0 +1,13 @@
+{
+    "name": "Dorm",
+    "alias": "dorm",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Dorm\\Providers\\DormServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}
