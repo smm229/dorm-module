@@ -1,9 +1,10 @@
 {
-    "name": "smm229/dorm",
+    "name": "smm229/dorm-module",
     "description": "laravel模块",
     "support": {  
        "source": "https://github.com/smm229/dorm-module"  
     },
+    "type":"laravel-module",
     "authors": [
         {
             "name": "yanxx",
