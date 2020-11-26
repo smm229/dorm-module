@@ -1,3 +1,3 @@
 # dorm-module
-laravel模块化
+laravel8模块化-宿舍模块
 项目私有化使用
