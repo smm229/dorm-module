@@ -1,9 +1,12 @@
 # dorm-module
-laravel8模块化-宿舍模块
-项目私有化使用
-请先安装 nwidart/laravel-modules和joshbrw/laravel-module-installer
+==== 
+laravel8模块化-宿舍模块\<br>
+项目私有化使用\<br>
+请先安装 nwidart/laravel-modules和joshbrw/laravel-module-installer\<br>
 
-1、composer require smm229/dorm-module
-2、在Kernel.php添加路由中间件
-'DormPermission' => \Modules\Dorm\Http\Middleware\DormPermission::class
+1、```Bash 
+composer require smm229/dorm-module\<br>
+```
+2、在Kernel.php添加路由中间件\<br>
+'DormPermission' => \Modules\Dorm\Http\Middleware\DormPermission::class\<br>
 
