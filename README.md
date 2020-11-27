@@ -4,7 +4,7 @@ laravel8模块化-宿舍模块<br/>
 项目私有化使用<br/>
 请先安装 nwidart/laravel-modules和joshbrw/laravel-module-installer<br/>
 
-1、
+1、引入包
 ```
 composer require smm229/dorm-module
 ```
