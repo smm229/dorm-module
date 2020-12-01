@@ -10,7 +10,8 @@ composer require smm229/dorm-module
 ```
 2、在Kernel.php添加路由中间件<br/>
 ```
-'DormPermission' => \Modules\Dorm\Http\Middleware\DormPermission::class //验证权限
+'DormPermission' => \Modules\Dorm\Http\Middleware\DormPermission::class //模块权限
+'AuthDel' => \Modules\Dorm\Http\Middleware\AuthDel::class //验证角色权限
 ```
 3、编辑config/auth.php
 ```
