@@ -15,8 +15,20 @@ class DormitoryRoom extends Model
 
     protected $table="dormitory_room";
 
-    protected $fillable = [];
-    
+    protected $appends = ['building_name','buildtype_name'];
+
+    //楼宇名称
+    public function getBuildingNameAttribute()
+    {
+        return DormitoryBuildings::whereId($this->buildid)->value('title');
+    }
+
+    //类型名称
+    public function getBuildtypeNameAttribute()
+    {
+        return DormitoryCategory::whereId($this->buildtype)->value('name');
+    }
+
 //    protected static function newFactory()
 //    {
 //        return \Modules\Dorm\Database\factories\DormitoryRoomFactory::new();
@@ -27,5 +39,12 @@ class DormitoryRoom extends Model
      */
     public function dormitory_buildings(){
         return $this->belongsTo(DormitoryBuildings::class,'buildid');
+    }
+
+    /*
+     * 关联床位
+     */
+    public function dormitory_beds(){
+        return $this->hasMany(DormitoryBeds::class,'roomid');
     }
 }

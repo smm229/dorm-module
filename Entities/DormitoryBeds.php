@@ -16,12 +16,21 @@ class DormitoryBeds extends Model
 
     protected $table = 'dormitory_beds';
 
-    protected $fillable = [];
-    
-//    protected static function newFactory()
-//    {
-//        return \Modules\Dorm\Database\factories\DormitoryBedsFactory::new();
-//    }
+    protected $appends = ['check_in','username']; //是否入住，学员名称
+
+    //是否有学员入住
+    public function getCheckInAttribute()
+    {
+        return $this->idnum ? 1 : 0;
+    }
+
+    /*
+     * 学员名称
+     */
+    public function getUsernameAttribute()
+    {
+        return $this->idnum ? Student::where('idnum',$this->idnum)->value('username') : '';
+    }
 
     /*
      * 关联宿舍

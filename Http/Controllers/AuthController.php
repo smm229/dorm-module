@@ -53,4 +53,16 @@ class AuthController extends Controller
     {
         return Auth::guard($this->guard);
     }
+
+    /*
+     * 退出
+     */
+    public function logout(){
+        try {
+            $this->guard()->logout();
+            return showMsg('退出成功', 200);
+        }catch(\Exception $e){
+            return showMsg('退出失败');
+        }
+    }
 }

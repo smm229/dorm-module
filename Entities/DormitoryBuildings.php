@@ -16,28 +16,34 @@ class DormitoryBuildings extends Model
 
     protected $table = "dormitory_buildings";
 
-    protected $appends = ['total_room','total_beds','total_person','total_empty_beds'];
+    protected $appends = ['total_room','total_beds','total_person','total_empty_beds','buildtype_name'];
 
     //全部房间
     public function getTotalRoomAttribute(){
-
+        return DormitoryRoom::where('buildid',$this->id)->count();
     }
     //全部床位
-    public function getTotalBedsAttributes()
+    public function getTotalBedsAttribute()
     {
-
+        return DormitoryBeds::where('buildid',$this->id)->count();
     }
 
     //入住人数
-    public function getTotalPersonAttributes()
+    public function getTotalPersonAttribute()
     {
-
+        return DormitoryBeds::where('buildid',$this->id)->whereNotNull('idnum')->count();
     }
 
     //空床位
-    public function getTotalEmptyBedsAttributes()
+    public function getTotalEmptyBedsAttribute()
     {
+        return DormitoryBeds::where('buildid',$this->id)->whereNull('idnum')->count();
+    }
 
+    //类型名称
+    public function getBuildtypeNameAttribute()
+    {
+        return DormitoryCategory::whereId($this->buildtype)->value('name');
     }
 
 //    protected static function newFactory()

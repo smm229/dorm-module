@@ -15,7 +15,7 @@ class CreateDormitoryUsersBuildingTable extends Migration
     {
         Schema::connection('mysql_dorm')->create('dormitory_users_building', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('idnum', 32)->unique('username')->comment('教师工号');
+            $table->string('idnum', 32)->index('username')->comment('教师工号');
             $table->tinyInteger('buildid')->comment('楼宇id');
             $table->timestamp('created_at')->nullable()->useCurrent()->comment('创建时间');
             $table->softDeletes()->comment('删除时间');

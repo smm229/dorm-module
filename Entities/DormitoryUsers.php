@@ -22,12 +22,11 @@ class DormitoryUsers extends Authenticatable implements JWTSubject {
 
     protected $fillable = [];
 
-    
-//    protected static function newFactory()
-//    {
-//        return \Modules\Dorm\Database\factories\DormitoryUsersFactory::new();
-//    }
-
+    public function getSexAttribute($value)
+    {
+        $sex = ['1'=>'男', '2'=>'女', '3' => '保密'];
+        return $sex[$value];
+    }
     //关联楼宇
     public function dormitory_buildings(){
         /*
