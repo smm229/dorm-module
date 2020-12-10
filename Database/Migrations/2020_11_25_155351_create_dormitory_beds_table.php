@@ -15,9 +15,9 @@ class CreateDormitoryBedsTable extends Migration
     {
         Schema::connection('mysql_dorm')->create('dormitory_beds', function (Blueprint $table) {
             $table->increments('id');
-            $table->tinyInteger('buildid')->comment('楼宇id');
-            $table->tinyInteger('roomid')->comment('房间id');
-            $table->tinyInteger('bednum')->comment('床位号');
+            $table->Integer('buildid')->comment('楼宇id');
+            $table->Integer('roomid')->comment('房间id');
+            $table->string('bednum')->comment('床位号');
             $table->string('idnum')->nullable()->comment('床位的所属人编号');
             $table->timestamp('created_at')->nullable()->useCurrent()->comment('创建时间');
             $table->timestamp('updated_at')->nullable()->comment('更新时间');

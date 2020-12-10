@@ -170,4 +170,8 @@ class AdminController extends Controller
             return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
         }
     }
+
+    public function test() {
+        $timestamp = time().'000';
+    }
 }

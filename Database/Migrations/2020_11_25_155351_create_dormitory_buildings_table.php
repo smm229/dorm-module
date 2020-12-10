@@ -16,7 +16,7 @@ class CreateDormitoryBuildingsTable extends Migration
         Schema::connection('mysql_dorm')->create('dormitory_buildings', function (Blueprint $table) {
             $table->increments('id');
             $table->string('title')->default('')->comment('楼名称');
-            $table->tinyInteger('buildtype')->comment('楼的类型');
+            $table->Integer('buildtype')->comment('楼的类型');
             $table->tinyInteger('floor')->comment('楼的总层数');
             $table->string('ename', 100)->nullable()->default('')->comment('楼英文');
             $table->text('icon')->nullable()->comment('楼图像信息');

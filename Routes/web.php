@@ -11,6 +11,6 @@
 |
 */
 
-Route::prefix('dorm')->group(function() {
-    Route::get('/', 'DormController@index');
-});
+Route::any('/', 'DormController@index');
+
+

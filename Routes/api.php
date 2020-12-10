@@ -17,8 +17,8 @@ use Illuminate\Http\Request;
 
 
 Route::post('/dormitory/auth/login', 'AuthController@login');//登录
-
-Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','DormPermission']],function ($api){ //'domain' => 'dorm.hnrtxx.com','middleware'=>'refresh'
+//,'middleware'=>['refresh:dorm','DormPermission']
+Route::group(['prefix'=>'dormitory'],function ($api){ //'domain' => 'dorm.hnrtxx.com','middleware'=>'refresh'
     //楼宇
     $api->group(['prefix'=>'buildings'],function ($api){
         $api->post('list',         'DormController@lists');//宿舍楼宇列表
@@ -42,20 +42,28 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','DormPermissio
         $api->post('list',         'DormBedsController@lists');//床位列表
         $api->post('detail',       'DormBedsController@detail');//床位详情
         $api->post('change',       'DormBedsController@change');//调宿
-        $api->post('add',           'DormBedsController@add');//分配宿舍
-        $api->post('del',           'DormBedsController@del');//删除床位人员
+        $api->post('add',          'DormBedsController@add');//分配宿舍
+        $api->post('del',          'DormBedsController@del');//删除床位人员
         $api->post('batch/users',  'DormBedsController@users');//批量退宿人员列表
     });
 
     $api->group(['prefix' => 'admin'], function ($apione) {
-        $apione->post('categorylist', 'AdminController@categoryList');
-        $apione->post('teacherlist', 'AdminController@teacherList');
-        $apione->post('teacheradd', 'AdminController@create');
-        $apione->post('adminlist', 'AdminController@adminList');
-        $apione->post('delete', 'AdminController@delete');
-        $apione->post('binddorm', 'AdminController@bindDorm');
-        $apione->post('logout', 'AuthController@logout');//退出
+        $apione->post('categorylist',  'AdminController@categoryList');
+        $apione->post('teacherlist',   'AdminController@teacherList');
+        $apione->post('teacheradd',    'AdminController@create');
+        $apione->post('adminlist',     'AdminController@adminList');
+        $apione->post('delete',        'AdminController@delete');
+        $apione->post('binddorm',      'AdminController@bindDorm');
+        $apione->post('logout',        'AuthController@logout');//退出
+
     });
 
-
+    $api->group(['prefix' => 'facility'], function ($apione) {
+        $apione->post('list',          'FacilityController@index');
+        $apione->post('edit',          'FacilityController@edit');
+        $apione->post('delete',        'FacilityController@delete');
+        $apione->post('test',          'FacilityController@test');
+    });
 });
+
+

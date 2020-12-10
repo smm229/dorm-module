@@ -8,8 +8,11 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Modules\Dorm\Entities\DormitoryBeds;
 use Modules\Dorm\Entities\DormitoryRoom;
+use Modules\Dorm\Entities\DormitoryStayrecords;
 use Modules\Dorm\Http\Requests\DormitoryBedsValidate;
 use Modules\Dorm\Http\Requests\DormitoryRoomValidate;
+use Log;
+use Modules\Dorm\Jobs\Stayrecords;
 
 class DormBedsController extends Controller
 {
@@ -26,13 +29,23 @@ class DormBedsController extends Controller
      */
     public function lists(Request $request){
         $pagesize = $request->pagesize ?? 12;
+        $type = $request->type ?? 1;//类型 1自己查看床位列表 2调宿时查看床位列表
         //当前宿管管理那栋楼
         $uid = auth()->user() ? auth()->user()->id : 1;//白名单
         $idnum = auth()->user() ? auth()->user()->idnum : '';
-        $list = DormitoryRoom::where(function ($q) use ($request,$uid,$idnum){
-                if($uid !=1) $q->whereIn('buildid',function ($query) use ($idnum){
+        //DB::connection('mysql_dorm')->enableQueryLog();
+        $list = DormitoryRoom::where(function ($q) use ($request,$uid,$idnum,$type){
+                //自己查看自己时
+                if($uid !=1 && $type==1) $q->whereIn('buildid',function ($query) use ($idnum){
                     $query->from('dormitory_users_building')->where('idnum',$idnum)->pluck('buildid');
                 });
+                if($type==2){ //调宿
+                    $q->whereExists(function($query)
+                    {
+                        $query->from('dormitory_beds')->whereRaw('dormitory_room.id = dormitory_beds.roomid')->whereNull('idnum');
+                    });
+                }
+
                 if($request->buildid) $q->where('buildid',$request->buildid);
                 if($request->floornum) $q->where('floornum',$request->floornum);
                 //房间号
@@ -42,6 +55,8 @@ class DormBedsController extends Controller
                 $q->select('id','bednum','roomid','idnum')->orderBy('id','asc');
             }])
             ->paginate($pagesize);
+        //$queries = DB::connection('mysql_dorm')->getQueryLog();
+
         return showMsg('获取成功',200,$list);
     }
 
@@ -78,13 +93,16 @@ class DormBedsController extends Controller
             DB::transaction(function () use ($beds,$request,$type){
                 if($type==2){ //调宿
                     //删除原来的宿舍分配
-                    DormitoryBeds::whereId($beds->id)->update(['idnum'=>'']);
+                    DormitoryBeds::whereId($beds->id)->update(['idnum'=>null]);
                 }
                 //分配学员
                 $beds->idnum = $request->idnum;
                 $beds->save();
+                //调宿记录
+                //Stayrecords::dispatch($beds,$type);
+                Stayrecords::dispatch('你好','648128278@qq.com');
             });
-
+            Log::info(date('Y-m-d H:i:s').'分配完成');
             return showMsg('分配成功', 200);
         }catch(\Exception $e){
             return showMsg('分配失败');
@@ -96,11 +114,18 @@ class DormBedsController extends Controller
      */
     public function del(Request $request){
         try {
-            if (is_array($request->bedsid)) { //批量退宿
-                DormitoryBeds::whereIn('id', $request->bedsid)->update(['idnum' => '']);
-            } else {
-                DormitoryBeds::whereId($request->bedsid)->update(['idnum' => '']);
+            $bedids = is_array($request->bedsid) ? $request->bedsid : (array)$request->bedsid;
+            $beds = DormitoryBeds::whereIn('id',$bedids)->get();
+            if(!$beds){
+                throw new \Exception('数据格式错误');
             }
+            $r=DormitoryBeds::whereIn('id', $request->bedsid)->update(['idnum' => null]);
+
+            if(!$r){
+                throw new \Exception('删除失败');
+            }
+            //退宿记录
+            DormitoryStayrecords::record($beds,2);
             return showMsg('删除成功', 200);
         }catch(\Exception $e) {
             return showMsg('删除失败');
@@ -108,7 +133,7 @@ class DormBedsController extends Controller
     }
 
     /*
-     * 批量退宿
+     * 批量退宿获取人员列表
      * @param buildid int 宿舍楼
      * @param floornum int 楼层
      * @param roomid int 房间号
@@ -131,7 +156,6 @@ class DormBedsController extends Controller
             })
             ->pluck('id')
             ->toArray();
-
         $list = DormitoryBeds::whereIn('roomid',$roomids)
             ->whereNotNull('idnum')
             ->with('student')

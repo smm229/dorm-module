@@ -19,6 +19,11 @@ class DormController extends Controller
         $this->middleware('AuthDel')->only(['del','del_cate']);
     }
 
+    public function index()
+    {
+        return 123;
+    }
+
     /*
      * 宿舍楼列表
      */
