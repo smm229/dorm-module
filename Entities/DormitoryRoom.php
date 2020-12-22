@@ -11,7 +11,7 @@ class DormitoryRoom extends Model
     use HasFactory,SerializeDate;
 
     //声明链接数据库
-    protected $connection = 'mysql_dorm';
+    //protected $connection = 'mysql_dorm';
 
     protected $table="dormitory_room";
 
@@ -20,13 +20,13 @@ class DormitoryRoom extends Model
     //楼宇名称
     public function getBuildingNameAttribute()
     {
-        return DormitoryBuildings::whereId($this->buildid)->value('title');
+        return DormitoryGroup::whereId($this->buildid)->value('title');
     }
 
     //类型名称
     public function getBuildtypeNameAttribute()
     {
-        return DormitoryCategory::whereId($this->buildtype)->value('name');
+        return DormitoryCategory::whereId($this->buildtype)->where('ckey','dormitory_room')->value('name');
     }
 
 //    protected static function newFactory()
@@ -38,7 +38,7 @@ class DormitoryRoom extends Model
      * 关联楼宇
      */
     public function dormitory_buildings(){
-        return $this->belongsTo(DormitoryBuildings::class,'buildid');
+        return $this->belongsTo(DormitoryGroup::class,'buildid');
     }
 
     /*

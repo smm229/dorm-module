@@ -9,10 +9,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class DormitoryAccessRecord extends Model
 {
     use HasFactory,SerializeDate;
-    protected $connection = "mysql_dorm";
+
     protected $table='dormitory_access_record';
     protected $fillable = [];
-    
+    protected $appends = ['type_name'];
 
+    /*
+     * 类型
+     */
+    public function getTypeNameAttribute()
+    {
+        return $this->type==1 ? '学员': '教职工';
+    }
 
 }

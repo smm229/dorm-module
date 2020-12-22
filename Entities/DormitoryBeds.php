@@ -12,11 +12,11 @@ class DormitoryBeds extends Model
     use HasFactory,SerializeDate;
 
     //声明链接数据库
-    protected $connection = 'mysql_dorm';
+    //protected $connection = 'mysql_dorm';
 
     protected $table = 'dormitory_beds';
 
-    protected $appends = ['check_in','username']; //是否入住，学员名称
+    protected $appends = ['check_in','username','build_name','room_num']; //是否入住，学员名称,楼宇名称，房间名称
 
     //是否有学员入住
     public function getCheckInAttribute()
@@ -30,6 +30,18 @@ class DormitoryBeds extends Model
     public function getUsernameAttribute()
     {
         return $this->idnum ? Student::where('idnum',$this->idnum)->value('username') : '';
+    }
+
+    //楼宇名称
+    public function getBuildNameAttribute()
+    {
+        return DormitoryGroup::whereId($this->buildid)->value('title');
+    }
+
+    //房间信息
+    public function getRoomNumAttribute()
+    {
+        return DormitoryRoom::whereId('roomid')->value('roomnum');
     }
 
     /*

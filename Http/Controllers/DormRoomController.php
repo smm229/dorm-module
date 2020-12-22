@@ -2,12 +2,14 @@
 
 namespace Modules\Dorm\Http\Controllers;
 
+use App\Exports\Export;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Modules\Dorm\Entities\DormitoryBeds;
 use Modules\Dorm\Entities\DormitoryRoom;
 use Modules\Dorm\Http\Requests\DormitoryRoomValidate;
+use Excel;
 
 class DormRoomController extends Controller
 {
@@ -15,6 +17,22 @@ class DormRoomController extends Controller
     public function __construct()
     {
         $this->middleware('AuthDel')->only(['del','del_cate']);
+    }
+
+    /*
+     * 导出
+     */
+    public function export(Request $request){
+        $header = [[
+            'building_name'     =>  '宿舍楼',
+            'floornum'          =>  '宿舍楼层',
+            'roomnum'           =>  '宿舍房间号',
+            'bedsnum'           =>  '床位数',
+            'buildtype_name'   =>  '床铺类型'
+        ]];
+        $data = DormitoryRoom::all()->toArray();
+        $excel = new Export($data, $header,'宿舍信息');
+        return Excel::download($excel, time().'.xlsx');
     }
 
     /*

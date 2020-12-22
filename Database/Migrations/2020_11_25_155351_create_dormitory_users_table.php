@@ -13,7 +13,7 @@ class CreateDormitoryUsersTable extends Migration
      */
     public function up()
     {
-        Schema::connection('mysql_dorm')->create('dormitory_users', function (Blueprint $table) {
+        Schema::create('dormitory_users', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('idnum', 32)->unique('username')->comment('教师工号');
             $table->string('password')->comment('密码');
@@ -28,7 +28,7 @@ class CreateDormitoryUsersTable extends Migration
             $table->softDeletes()->comment('删除时间');
             $table->timestamp('updated_at')->nullable()->comment('更新时间');
         });
-        \Illuminate\Support\Facades\DB::connection('mysql_dorm')->statement("ALTER TABLE `dormitory_users` comment '管理员表'");
+        \Illuminate\Support\Facades\DB::statement("ALTER TABLE `dormitory_users` comment '管理员表'");
     }
 
     /**
@@ -38,7 +38,7 @@ class CreateDormitoryUsersTable extends Migration
      */
     public function down()
     {
-        Schema::connection('mysql_dorm')->drop('dormitory_users', function (Blueprint $table) {
+        Schema::drop('dormitory_users', function (Blueprint $table) {
 
 
 

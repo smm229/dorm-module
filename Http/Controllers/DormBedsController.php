@@ -2,6 +2,7 @@
 
 namespace Modules\Dorm\Http\Controllers;
 
+use App\Exports\Export;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -12,6 +13,7 @@ use Modules\Dorm\Entities\DormitoryStayrecords;
 use Modules\Dorm\Http\Requests\DormitoryBedsValidate;
 use Modules\Dorm\Http\Requests\DormitoryRoomValidate;
 use Log;
+use Excel;
 use Modules\Dorm\Jobs\Stayrecords;
 
 class DormBedsController extends Controller
@@ -20,6 +22,20 @@ class DormBedsController extends Controller
     public function __construct()
     {
         $this->middleware(['AuthDel'])->only(['del','del_cate']);
+    }
+
+    /*
+     * 导出
+     */
+    public function export(Request $request){
+        $header = [[
+            'room_num'      =>    '房间号',
+            'bednum'        =>    '床位号',
+            'idnum'         =>    '住宿人员编号'
+        ]];
+        $data = DormitoryBeds::all()->toArray();
+        $excel = new Export($data, $header,'床位信息');
+        return Excel::download($excel, time().'.xlsx');
     }
 
     /*
@@ -91,16 +107,17 @@ class DormBedsController extends Controller
         }
         try {
             DB::transaction(function () use ($beds,$request,$type){
+                $buildid = 0;
                 if($type==2){ //调宿
                     //删除原来的宿舍分配
-                    DormitoryBeds::whereId($beds->id)->update(['idnum'=>null]);
+                    $buildid = DormitoryBeds::where('idnum',$request->idnum)->value('buildid');
+                    DormitoryBeds::where('idnum',$request->idnum)->update(['is_in'=>0,'idnum'=>null]);
                 }
                 //分配学员
                 $beds->idnum = $request->idnum;
                 $beds->save();
                 //调宿记录
-                //Stayrecords::dispatch($beds,$type);
-                Stayrecords::dispatch('你好','648128278@qq.com');
+                Stayrecords::dispatch($beds,$type,$buildid);
             });
             Log::info(date('Y-m-d H:i:s').'分配完成');
             return showMsg('分配成功', 200);
@@ -119,13 +136,13 @@ class DormBedsController extends Controller
             if(!$beds){
                 throw new \Exception('数据格式错误');
             }
-            $r=DormitoryBeds::whereIn('id', $request->bedsid)->update(['idnum' => null]);
+            $r=DormitoryBeds::whereIn('id', $request->bedsid)->update(['is_in'=>0,'idnum' => null]);
 
             if(!$r){
                 throw new \Exception('删除失败');
             }
             //退宿记录
-            DormitoryStayrecords::record($beds,2);
+            Stayrecords::dispatch($beds,3);
             return showMsg('删除成功', 200);
         }catch(\Exception $e) {
             return showMsg('删除失败');

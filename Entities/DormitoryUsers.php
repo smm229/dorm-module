@@ -14,7 +14,7 @@ class DormitoryUsers extends Authenticatable implements JWTSubject {
     use Notifiable,HasFactory,SerializeDate,SoftDeletes;
 
     //声明链接数据库
-    protected $connection = 'mysql_dorm';
+    //protected $connection = 'mysql_dorm';
 
     protected $table = "dormitory_users";
 
@@ -35,7 +35,7 @@ class DormitoryUsers extends Authenticatable implements JWTSubject {
          * 第三个参数：当前表跟中间表对应的外键
          * 第四个参数：要关联的表跟中间表对应的外键
          * */
-        return $this->belongsToMany(DormitoryBuildings::class,'dormitory_users_building','idnum','buildid');
+        return $this->belongsToMany(DormitoryGroup::class,'dormitory_users_building','idnum','buildid');
     }
 
     /**

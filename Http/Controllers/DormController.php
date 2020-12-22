@@ -2,14 +2,17 @@
 
 namespace Modules\Dorm\Http\Controllers;
 
+use App\Exports\Export;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
-use Modules\Dorm\Entities\DormitoryBuildings;
 use Modules\Dorm\Entities\DormitoryCategory;
+use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryRoom;
+use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Entities\DormitoryUsersBuilding;
 use Modules\Dorm\Http\Requests\DormitoryBuildingsValidate;
+use Excel;
 
 class DormController extends Controller
 {
@@ -19,9 +22,39 @@ class DormController extends Controller
         $this->middleware('AuthDel')->only(['del','del_cate']);
     }
 
-    public function index()
+    /*
+     * 调出excel
+     * 暂时导出全部
+     */
+    public function export(Request $request)
     {
-        return 123;
+        //设置表头
+        $header = [
+            [
+                "title"=>'名称',
+                "floor"=>'楼层数',
+                "buildtype_name"=>'楼宇类型',
+                "total_room"=>'房间总数',
+                "total_beds"=>'床位总数',
+                "total_person"=>'入住人数',
+                "total_empty_beds"=>'空床位数',
+                "teachers"=>'宿管老师'
+            ]
+        ];
+        $data = DormitoryGroup::whereType(1)->get()->toArray();
+        if($data){
+            foreach($data as &$v){
+                $teacher = DormitoryUsers::whereIn('idnum',function ($q) use ($v){
+                        $q->select('idnum')->from('dormitory_users_building')->where('buildid',$v['id'])->get();
+                    })
+                    ->pluck('dormitory_users.username')
+                    ->toArray();
+                $v['teachers'] = implode(',',$teacher);
+            }
+        }
+        $excel = new Export($data, $header,'宿舍楼信息');
+        return Excel::download($excel, time().'.xlsx');
+
     }
 
     /*
@@ -33,7 +66,8 @@ class DormController extends Controller
         $uid = auth()->user() ? auth()->user()->id : 1;//白名单
         $idnum = auth()->user() ? auth()->user()->idnum : '';
 
-        $list = DormitoryBuildings::select('id', 'title', 'floor')
+        $list = DormitoryGroup::select('id', 'title', 'floor')
+            ->whereType(1)
             ->where(function ($query) use ($idnum,$uid){
                 //根据人员查询对应楼宇
                 if($uid!=1)  $query->whereIn('id',function ($q) use ($idnum){
@@ -53,22 +87,19 @@ class DormController extends Controller
      * @param title 名称
      * @param buildtype 楼宇类型id
      * @param floor 楼层
-     * @param ename 英文名称
-     * @param icon 图标
      * @param teachers 宿管老师idnum集合
      */
     public function add(DormitoryBuildingsValidate $request){
         try{
-            if(DormitoryBuildings::whereTitle($request->title)->first()){
+            if(DormitoryGroup::whereTitle($request->title)->first()){
                 throw new \Exception('请更换名称');
             }
             DB::transaction(function () use ($request){
-                $buildid = DormitoryBuildings::insertGetId([
+                $buildid = DormitoryGroup::insertGetId([
                     'title'         =>  $request->title,
+                    'type'          =>  1,
                     'buildtype'    =>  $request->buildtype,
-                    'floor'         =>  $request->floor,
-                    'ename'         =>  $request->ename ?? '',
-                    'icon'          =>  $request->icon ?? ''
+                    'floor'         =>  $request->floor
                 ]);
                 $users = explode(',',$request->teachers);
                 $build = ['buildid'=>$buildid];
@@ -95,10 +126,10 @@ class DormController extends Controller
     */
     public function edit(DormitoryBuildingsValidate $request){
         try{
-            if($info = DormitoryBuildings::whereId($request->id)->first()){
+            if($info = DormitoryGroup::whereId($request->id)->first()){
                 throw new \Exception('信息不存在');
             }
-            if(DormitoryBuildings::whereTitle($request->title)->where('id','<>',$request->id)->first()){
+            if(DormitoryGroup::whereTitle($request->title)->where('id','<>',$request->id)->first()){
                 throw new \Exception('请更换名称');
             }
             //查看楼层
@@ -132,13 +163,13 @@ class DormController extends Controller
      * 删除楼宇
      */
     public function del(Request $request){
-        if(!DormitoryBuildings::whereId($request->id)->first()){
+        if(!DormitoryGroup::whereId($request->id)->first()){
             return showMsg('信息不存在');
         }
         if(DormitoryUsersBuilding::where('buildid',$request->id)->count()>0 || DormitoryRoom::where('buildid',$request->id)->count()>0){
             return showMsg('无法删除');
         }
-        DormitoryBuildings::whereId($request->id)->delete();
+        DormitoryGroup::whereId($request->id)->delete();
         return showMsg('删除成功',200);
     }
 
@@ -206,7 +237,7 @@ class DormController extends Controller
             return showMsg('信息不存在');
         }
         if($info->ckey=='dormitory') { //楼宇
-            if (DormitoryBuildings::where('buildtype', $request->id)->count() > 0) {
+            if (DormitoryGroup::where('buildtype', $request->id)->count() > 0) {
                 return showMsg('无法删除');
             }
         }else{

@@ -25,7 +25,7 @@ class FacilityController extends Controller
         //$res = $senselink->linkguest_del('41', $name, '35', $avatarFile, $dateTimeFrom, $dateTimeTo);
         //$res = $senselink->linkdevice_edit($deviceid);
         //$res = $senselink->linkblacklist_moveout('35');
-        $res = $senselink->linkperson_del('42');
+        $res = $senselink->linkperson_add($name, $avatarFile);
 //        $res = $senselink->linkperson_add($name, $avatarFile, $groups = '1', $icNumber = '123', $jobNumber = '123', $mobile = '111111', $remark = '123');
         dd($res);
     }

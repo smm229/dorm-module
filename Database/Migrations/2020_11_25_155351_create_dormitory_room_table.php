@@ -13,7 +13,7 @@ class CreateDormitoryRoomTable extends Migration
      */
     public function up()
     {
-        Schema::connection('mysql_dorm')->create('dormitory_room', function (Blueprint $table) {
+        Schema::create('dormitory_room', function (Blueprint $table) {
             $table->increments('id');
             $table->string('roomnum')->default('')->comment('房间号');
             $table->Integer('buildtype')->comment('楼的类型');
@@ -23,7 +23,7 @@ class CreateDormitoryRoomTable extends Migration
             $table->timestamp('created_at')->nullable()->useCurrent()->comment('创建时间');
             $table->timestamp('updated_at')->nullable()->comment('更新时间');
         });
-        \Illuminate\Support\Facades\DB::connection('mysql_dorm')->statement("ALTER TABLE `dormitory_room` comment '房间表'");
+        \Illuminate\Support\Facades\DB::statement("ALTER TABLE `dormitory_room` comment '房间表'");
     }
 
     /**
@@ -33,7 +33,7 @@ class CreateDormitoryRoomTable extends Migration
      */
     public function down()
     {
-        Schema::connection('mysql_dorm')->drop('dormitory_room', function (Blueprint $table) {
+        Schema::drop('dormitory_room', function (Blueprint $table) {
 
 
 

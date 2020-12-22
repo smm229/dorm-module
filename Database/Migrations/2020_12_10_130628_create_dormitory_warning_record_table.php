@@ -13,7 +13,7 @@ class CreateDormitoryWarningRecordTable extends Migration
      */
     public function up()
     {
-        Schema::connection('mysql_dorm')->create('dormitory_warning_record', function (Blueprint $table) {
+        Schema::create('dormitory_warning_record', function (Blueprint $table) {
             $table->increments('id');
             $table->dateTime('pass_time')->comment('通行时间');
             $table->string('pass_location')->comment('识别地点');
@@ -22,7 +22,7 @@ class CreateDormitoryWarningRecordTable extends Migration
             $table->string('cover')->nullable()->comment('图片');
             $table->timestamp('created_at')->nullable()->useCurrent();
         });
-        \Illuminate\Support\Facades\DB::connection('mysql_dorm')->statement("ALTER TABLE `dormitory_warning_record` comment '告警记录'");
+        \Illuminate\Support\Facades\DB::statement("ALTER TABLE `dormitory_warning_record` comment '告警记录'");
     }
 
     /**
@@ -32,12 +32,8 @@ class CreateDormitoryWarningRecordTable extends Migration
      */
     public function down()
     {
-        Schema::connection('mysql_dorm')->drop('dormitory_warning_record', function (Blueprint $table) {
-            
-            
-            
-            
-            
+        Schema::drop('dormitory_warning_record', function (Blueprint $table) {
+
             
             
         });

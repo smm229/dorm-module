@@ -43,7 +43,7 @@ class DormitoryBedsValidate extends FormRequest
     protected function failedValidation(Validator $validator)
     {
         $error= $validator->errors()->all();
-        throw new HttpResponseException($this->fail(1, $error));
+        throw new HttpResponseException($this->fail(201, $error));
     }
 
     protected function fail(int $code, array $errors) : JsonResponse
