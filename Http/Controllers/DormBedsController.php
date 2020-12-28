@@ -33,7 +33,8 @@ class DormBedsController extends Controller
             'bednum'        =>    '床位号',
             'idnum'         =>    '住宿人员编号'
         ]];
-        $data = DormitoryBeds::all()->toArray();
+        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $data = DormitoryBeds::whereIn('buildid',$buildids)->get()->toArray();
         $excel = new Export($data, $header,'床位信息');
         return Excel::download($excel, time().'.xlsx');
     }
@@ -47,14 +48,10 @@ class DormBedsController extends Controller
         $pagesize = $request->pagesize ?? 12;
         $type = $request->type ?? 1;//类型 1自己查看床位列表 2调宿时查看床位列表
         //当前宿管管理那栋楼
-        $uid = auth()->user() ? auth()->user()->id : 1;//白名单
-        $idnum = auth()->user() ? auth()->user()->idnum : '';
+        $buildids = RedisGet('builds-'.auth()->user()->id);
         //DB::connection('mysql_dorm')->enableQueryLog();
-        $list = DormitoryRoom::where(function ($q) use ($request,$uid,$idnum,$type){
-                //自己查看自己时
-                if($uid !=1 && $type==1) $q->whereIn('buildid',function ($query) use ($idnum){
-                    $query->from('dormitory_users_building')->where('idnum',$idnum)->pluck('buildid');
-                });
+        $list = DormitoryRoom::whereIn('buildid',$buildids)
+            ->where(function ($q) use ($request,$type){
                 if($type==2){ //调宿
                     $q->whereExists(function($query)
                     {
@@ -160,12 +157,9 @@ class DormBedsController extends Controller
     public function users(Request $request){
         $pagesize = $request->pagesize ?? 12;
         //当前宿管查看自己的楼栋
-        $uid = auth()->user() ? auth()->user()->id : 1;//白名单
-        $idnum = auth()->user() ? auth()->user()->idnum : '';
-        $roomids = DormitoryRoom::where(function ($q) use ($request,$uid,$idnum){
-                if($uid !=1) $q->whereIn('buildid',function ($query) use ($idnum){
-                    $query->from('dormitory_users_building')->where('idnum',$idnum)->pluck('buildid');
-                });
+        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $roomids = DormitoryRoom::whereIn('buildid',$buildids)
+            ->where(function ($q) use ($request){
                 if($request->buildid) $q->where('buildid',$request->buildid);
                 if($request->floornum) $q->where('floornum',$request->floornum);
                 //房间号

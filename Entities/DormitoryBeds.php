@@ -41,7 +41,7 @@ class DormitoryBeds extends Model
     //房间信息
     public function getRoomNumAttribute()
     {
-        return DormitoryRoom::whereId('roomid')->value('roomnum');
+        return DormitoryRoom::whereId($this->roomid)->value('roomnum');
     }
 
     /*

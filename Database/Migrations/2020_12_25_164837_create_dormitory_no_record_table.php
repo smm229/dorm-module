@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateDormitoryAccessRecordTable extends Migration
+class CreateDormitoryNoRecordTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,9 +13,9 @@ class CreateDormitoryAccessRecordTable extends Migration
      */
     public function up()
     {
-        Schema::create('dormitory_access_record', function (Blueprint $table) {
+        Schema::create('dormitory_no_record', function (Blueprint $table) {
             $table->increments('id');
-            $table->Integer('buildid')->comment('楼id');
+            $table->Integer('buildid')->index('idx_buildid')->comment('楼id');
             $table->unsignedTinyInteger('type')->default(1)->comment('类型1学生2老师');
             $table->string('idnum', 50)->index('index_idnum')->comment('学号/工号');
             $table->string('username', 50)->index('index_username')->comment('姓名');
@@ -24,16 +24,13 @@ class CreateDormitoryAccessRecordTable extends Migration
             $table->string('major_name', 50)->nullable()->comment('专业');
             $table->string('grade_name', 50)->nullable()->comment('年级');
             $table->string('class_name', 50)->nullable()->comment('班级');
-            $table->string('pass_location')->comment('通行地点');
-            $table->string('pass_way')->comment('通道名称');
-            $table->string('direction', 50)->nullable()->comment('方向');
-            $table->string('abnormalType', 50)->nullable()->comment('类型');
-            $table->tinyInteger('status',1)->nullable()->comment('状态,0正常1晚归');
-            $table->dateTime('pass_time')->comment('通行时间');
-            $table->string('cover')->nullable()->comment('识别照片');
+            $table->string('roomnum',20)->comment('房间号');
+            $table->string('bednum',20)->comment('床位号');
+            $table->date('date')->comment('未归日期');
             $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->comment('更新时间');
         });
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE `dormitory_access_record` comment '通行记录'");
+        \Illuminate\Support\Facades\DB::statement("ALTER TABLE `dormitory_no_record` comment '连续多天无通行记录'");
     }
 
     /**
@@ -43,7 +40,7 @@ class CreateDormitoryAccessRecordTable extends Migration
      */
     public function down()
     {
-        Schema::drop('dormitory_access_record', function (Blueprint $table) {
+        Schema::drop('dormitory_no_record', function (Blueprint $table) {
 
             
             

@@ -6,7 +6,9 @@ use App\Exports\Export;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Modules\Dorm\Entities\DormitoryAccessRecord;
 use Modules\Dorm\Entities\DormitoryBeds;
+use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryRoom;
 use Modules\Dorm\Http\Requests\DormitoryRoomValidate;
 use Excel;
@@ -30,7 +32,8 @@ class DormRoomController extends Controller
             'bedsnum'           =>  '床位数',
             'buildtype_name'   =>  '床铺类型'
         ]];
-        $data = DormitoryRoom::all()->toArray();
+        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $data = DormitoryRoom::whereIn('buildid',$buildids)->get()->toArray();
         $excel = new Export($data, $header,'宿舍信息');
         return Excel::download($excel, time().'.xlsx');
     }
@@ -43,16 +46,12 @@ class DormRoomController extends Controller
     public function lists(Request $request){
         $pagesize = $request->pagesize ?? 12;
         //只查询自己权限的宿舍
-        $uid = auth()->user() ? auth()->user()->id : 1;//白名单
-        $idnum = auth()->user() ? auth()->user()->idnum : '';
+        $buildids = RedisGet('builds-'.auth()->user()->id);
 
-        $list = DormitoryRoom::where(function ($q) use ($request,$uid,$idnum) {
+        $list = DormitoryRoom::whereIn('buildid',$buildids)
+            ->where(function ($q) use ($request) {
             if ($request->buildid) $q->where('buildid', $request->buildid);
             if ($request->floornum) $q->where('floornum', $request->floornum);
-            //按照楼栋筛选
-            if ($uid!=1) $q->whereIn('buildid',function ($query) use ($idnum){
-                $query->from('dormitory_users_building')->where('idnum',$idnum)->pluck('buildid');
-            });
         })->paginate($pagesize);
 
         return showMsg('获取成功',200,$list);

@@ -80,8 +80,16 @@ class SyncLink implements ShouldQueue
                         //删除关联组
                         DormitoryUsersGroup::where(['groupid'=>$groupid,'senselink_id'=>$this->userId])->delete();
                     }
+                    $i = 0;
+                    sync_del_link:
                     //同步删除link关联
-                    $senselink->user_group_del($this->userId,$groupid);
+                    $res = $senselink->user_group_del($this->userId,$groupid);
+                    if($res['code']!=200){//删除失败，重复执行
+                        $i++;
+                        if($i<3){
+                            goto sync_del_link;
+                        }
+                    }
                 }
                 sleep(2);//2秒延迟
                 $this->delete();

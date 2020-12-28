@@ -63,17 +63,11 @@ class DormController extends Controller
     public function lists(Request $request){
         $pagesize = $request->pagesize ?? 12;
         //只查询自己权限的楼宇
-        $uid = auth()->user() ? auth()->user()->id : 1;//白名单
-        $idnum = auth()->user() ? auth()->user()->idnum : '';
+        $buildids = RedisGet('builds-'.auth()->user()->id);
 
         $list = DormitoryGroup::select('id', 'title', 'floor')
             ->whereType(1)
-            ->where(function ($query) use ($idnum,$uid){
-                //根据人员查询对应楼宇
-                if($uid!=1)  $query->whereIn('id',function ($q) use ($idnum){
-                    $q->from('dormitory_users_building')->where('idnum',$idnum)->pluck('buildid');
-                });
-            })
+            ->whereIn('id',$buildids)
             ->with(['dormitory_users' => function ($q) {
                 $q->select('dormitory_users.id', 'dormitory_users.username', 'dormitory_users.idnum');
             }])

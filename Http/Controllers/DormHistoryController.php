@@ -3,12 +3,14 @@
 namespace Modules\Dorm\Http\Controllers;
 
 use App\Exports\Export;
+use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Log;
 use Excel;
 use Modules\Dorm\Entities\DormitoryAccessRecord;
+use Modules\Dorm\Entities\DormitoryNoBackRecord;
 use Modules\Dorm\Entities\DormitoryStayrecords;
 
 //历史记录
@@ -16,13 +18,15 @@ class DormHistoryController extends Controller
 {
 
     /*
-     * 住宿列表
+     * 住宿历史列表
      * @param username string 姓名
      * @param idnum string 学号
      */
     public function lists(Request $request){
         $pagesize = $request->pagesize ?? 10;
-        $list = DormitoryStayrecords::where(function ($q) use ($request){
+        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $list = DormitoryStayrecords::whereIn('buildid',$buildids)
+            ->where(function ($q) use ($request){
                 if($request->username) $q->whereUsername($request->username);
                 if($request->idnum) $q->whereUsername($request->idnum);
             })
@@ -47,7 +51,9 @@ class DormHistoryController extends Controller
             'created_at'        =>    '入住时间',
             'updated_at'        =>    '退宿时间'
         ]];
-        $data = DormitoryStayrecords::all()->toArray();
+        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $data = DormitoryStayrecords::whereIn('buildid',$buildids)
+            ->get()->toArray();
         $excel = new Export($data, $header,'住宿历史');
         return Excel::download($excel, time().'.xlsx');
     }
@@ -64,16 +70,18 @@ class DormHistoryController extends Controller
     public function student_access(Request $request){
         $type = $request->type ?? 1;
         $pagesize = $request->pagesize ?? 10;
-        $list = DormitoryAccessRecord::whereType($type)
-                    ->whereStatus(0)
-                    ->where(function ($q) use ($request){
-                        if($request->begin_time) $q->where('pass_time','>=',$request->begin_time);
-                        if($request->end_time) $q->where('pass_time','<=',$request->end_time);
-                        if($request->idnum) $q->whereIdnum($request->idnum);
-                        if($request->username) $q->whereUsername($request->username);
-                    })
-                    ->orderBy('id','desc')
-                    ->paginate($pagesize);
+        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $list = DormitoryAccessRecord::whereIn('buildid',$buildids)
+            ->whereType($type)
+            ->whereStatus(0)
+            ->where(function ($q) use ($request){
+                if($request->begin_time) $q->where('pass_time','>=',$request->begin_time);
+                if($request->end_time) $q->where('pass_time','<=',$request->end_time);
+                if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->username) $q->whereUsername($request->username);
+            })
+            ->orderBy('id','desc')
+            ->paginate($pagesize);
         return showMsg('获取成功',200,$list);
     }
 
@@ -96,8 +104,58 @@ class DormHistoryController extends Controller
             'abnormalType'     =>      '通行状态',
             'pass_time'        =>    '通行时间'
         ]];
-        $data = DormitoryAccessRecord::whereType($type)->whereStatus(0)->get()->toArray();
+        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $data = DormitoryAccessRecord::whereIn('buildid',$buildids)
+            ->whereType($type)
+            ->whereStatus(0)
+            ->get()
+            ->toArray();
         $excel = new Export($data, $header,'通行记录');
         return Excel::download($excel, time().'.xlsx');
     }
+
+    /*
+     * 晚归记录
+     * @paran  username  string 姓名
+     * @param idnum string  学号
+     * @param start_date 开始日期
+     * @param end_date 开始日期
+     */
+    public function later(Request $request){
+        $start_date = $request->start_date ?? date('Y-m-d');
+        $end_date = $request->end_date ?? date('Y-m-d 23:59:59');
+        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $pagesize = $request->pagesize ?? 10;
+        $list = DormitoryAccessRecord::whereType(1)
+            ->whereIn('buildid',$buildids)
+            ->where(function ($q) use ($request){
+                if($request->username) $q->whereUsername($request->username);
+                if($request->idnum) $q->whereIdnum($request->idnum);
+            })
+            ->whereStatus(1)
+            ->whereBetween('pass_time',[$start_date,$end_date])
+            ->paginate($pagesize);
+        return showMsg('获取成功',200,$list);
+    }
+
+    /*
+     * 未归记录
+     * @paran  username  string 姓名
+     * @param idnum string  学号
+     * @param start_date 开始日期
+     * @param end_date 开始日期
+     */
+    public function noBack(Request $request){
+        $pagesize = $request->pagesize ?? 10;
+        $start_date = $request->start_date ?? date('Y-m-d');
+        $end_date = $request->end_date ?? date('Y-m-d');
+        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $list = DormitoryNoBackRecord::whereIn('buildid',$buildids)
+            ->whereBetween('date',[$start_date,$end_date])
+            ->whereType(1)
+            ->paginate($pagesize);
+
+        return showMsg('获取成功',200,$list);
+    }
+
 }

@@ -15,6 +15,7 @@ class CreateDormitoryWarningRecordTable extends Migration
     {
         Schema::create('dormitory_warning_record', function (Blueprint $table) {
             $table->increments('id');
+            $table->Integer('buildid')->comment('楼id');
             $table->dateTime('pass_time')->comment('通行时间');
             $table->string('pass_location')->comment('识别地点');
             $table->string('pass_way')->comment('识别设备');
