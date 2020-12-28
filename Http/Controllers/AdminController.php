@@ -2,6 +2,7 @@
 
 namespace Modules\Dorm\Http\Controllers;
 
+use App\Models\Department;
 use App\Models\Teacher;
 use Dingo\Api\Routing\Helpers;
 use Illuminate\Contracts\Support\Renderable;
@@ -11,95 +12,41 @@ use GuzzleHttp\Client;
 use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Entities\DormitoryUsersBuilding;
 use Illuminate\Support\Facades\DB;
+use Modules\Dorm\Http\Requests\PasswordValidate;
 
 class AdminController extends Controller
 {
     use Helpers;
-    /**
-     * 获取人员大数据平台的分类信息
-     * Display a listing of the resource.
-     * @return Renderable
-     */
-    public function categoryList(Request $request)
-    {
-        if (!$request['ckey']) {
-            return $this->response->error('请求参数不正确', 201);
-        }
-        $client = new Client();
-        $host = config('whitelist.host');
-        $request_url = $host[0].'/api/category/list';
-        $response = $client->request('post', $request_url, [
-            'form_params' => [
-                'ckey' => $request['ckey']
-            ]
-        ]);
-        $result = json_decode($response->getBody()->getContents(), true);
-        if ($result['status_code'] != 200) {
-            return $this->response->error('获取数据失败',201);
-        }
-        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $result]);
-    }
 
     /**
-     * 获取人员大数据的教师列表
-     * @param Request $request
-     */
-    public function teacherList(Request $request)
-    {
-        $client = new Client();
-        $host = config('whitelist.host');
-        $request_url = $host[0].'/api/teacher/list';
-        $form_params = [
-            'form_params' => [
-                'positionid'   => $request['positionid'],
-                'departmentid' => $request['departmentid'],
-                'page'         => $request['page'],
-                'search'       => $request['search'],
-            ],
-        ];
-        $response = $client->request('post', $request_url, $form_params);
-        $result = json_decode($response->getBody()->getContents(), true);
-        if ($result['status_code'] != 200) {
-            return $this->response->error('获取数据失败',201);
-        }
-        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $result]);
-    }
-
-    /**
-     * 添加管理员账号
-     * Show the form for creating a new resource.
-     * @return Renderable
+     * 添加子管理员账号
+     * 可批量添加
      */
     public function create(Request $request)
     {
-        $client = new Client();
-        $host = config('whitelist.host');
-        $request_url = $host[0].'/api/teacher/list';
-        $form_params = [
-            'form_params' => [
-               'idnumStr' => $request['idnumStr']
-            ],
-        ];
-        $response = $client->request('post', $request_url, $form_params);
-        $result = json_decode($response->getBody()->getContents(), true);
-        if ($result['data']['data']) {
-            $data = $result['data']['data'];
-            foreach ($data as $k => $v) {
-                $data[$k] = array_diff_key($v, ['id' =>'', 'ID_number' => '', 'ename' => '', 'nation' => '', 'positionid' => '', 'departmentid' => '', 'positionname' => '', 'departmentname' => '', 'created_at' => '', 'updated_at' => '']);
-                $data[$k]['password'] = bcrypt('123456');
+        if (!$request['idnumStr']) {
+            return $this->response->error('参数错误',201);
+        }
+        $idnumArr = explode(',', $request['idnumStr']);
+        $result = Teacher::whereIn('idnum', $idnumArr)->get()->toArray();
+        $results = [];
+        if ($result) {
+            foreach ($result as $k => $v) {
+                $results[$k] = array_intersect_key($v, ['idnum' => '', 'username' => '', 'sex' => '', 'mobile' => '', 'headimg' => '']);
+                $results[$k]['password'] = bcrypt('123456');
             }
         }
-        $res = DormitoryUsers::insert($data);
+        $res = DormitoryUsers::insert($results);
         if (!$res) {
             return $this->response->error('添加失败,请联系管理员',201);
         }
-        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $result]);
+        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
     }
 
     /**
      * 获取管理员列表
      */
-    public function adminList(Request $request) {
+    public function lists(Request $request) {
         $res = DormitoryUsers::where(function ($req) use ($request){
             //模糊查询
             $title = false;
@@ -112,6 +59,7 @@ class AdminController extends Controller
                 }
             }
             if ($title) $req->where($title, 'like', "%$search%");
+            $req->where('disable', 0);
         })->orderBy('id', 'desc')->paginate($request['pageSize']);
         if (!$res) {
             return $this->response->error('获取管理员失败',201);
@@ -171,7 +119,61 @@ class AdminController extends Controller
         }
     }
 
-    public function test() {
-        $timestamp = time().'000';
+
+    /*
+     * 修改密码
+     * @param password 旧密码
+     * @param newpassword 新密码
+     * @param repassword 重复密码
+     */
+    public function changePwd(PasswordValidate $request) {
+        $user = DormitoryUsers::find(auth()->user()->id);
+        if (!$user){
+            return showMsg('用户不存在');
+        }
+        if(!password_verify($request->password , $user->password )){
+            return showMsg('密码输入有误，请重新输入');
+        }
+        if($request->newpassword != $request->repassword){
+            return showMsg('两次密码输入不一致');
+        }
+        $user->password = bcrypt($request->newpassword);
+        $user->save();
+        return showMsg('修改成功',200);
+    }
+
+
+    /**
+     * 编辑系统设置
+     * @param Request $request
+     */
+    public function setSysconfig(Request $request)
+    {
+        if (!$request['key'] || !$request['value']) {
+            return $this->response->error('参数错误',201);
+        }
+        $update = [
+            'value' => $request['value'],
+        ];
+        $res = DB::table('dormitory_config')->where('key', $request['key'])->update($update);
+        if (!$res && !empty($res)) {
+            return $this->response->error('编辑失败',201);
+        }
+        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
+    }
+
+    /**
+     * 获取系统设置
+     * @param Request $request
+     */
+    public function getSysconfig(Request $request)
+    {
+        $res = DB::table('dormitory_config')->where(function($q) use ($request) {
+            if ($request['key']) $q->where('key', $request['key']);
+        })->get();
+        if (!$res && !empty($res)) {
+            return $this->response->error('获取失败',201);
+        }
+        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
     }
 }

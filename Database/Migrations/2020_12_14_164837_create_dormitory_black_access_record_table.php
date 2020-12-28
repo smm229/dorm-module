@@ -15,6 +15,7 @@ class CreateDormitoryBlackAccessRecordTable extends Migration
     {
         Schema::create('dormitory_black_access_record', function (Blueprint $table) {
             $table->increments('id');
+            $table->Integer('buildid')->comment('楼id');
             $table->string('username', 50)->index('index_username')->comment('姓名');
             $table->string('sex',10)->comment('性别');
             $table->string('pass_location')->comment('通行地点');

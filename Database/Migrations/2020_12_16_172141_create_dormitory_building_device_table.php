@@ -17,6 +17,7 @@ class CreateDormitoryBuildingDeviceTable extends Migration
             $table->increments('id');
             $table->string('senselink_sn')->comment('senselink设备号');
             $table->integer('groupid')->comment('senselink组id');
+            $table->integer('deviceid')->comment('设备id');
             $table->timestamp('created_at')->nullable()->useCurrent()->comment('创建时间');
             $table->timestamp('updated_at')->nullable()->comment('更新时间');
         });

@@ -15,6 +15,7 @@ class CreateDormitoryStrangeAccessRecord extends Migration
     {
         Schema::create('dormitory_strange_access_record', function (Blueprint $table) {
             $table->increments('id');
+            $table->Integer('buildid')->comment('楼id');
             $table->dateTime('pass_time')->comment('通行时间');
             $table->string('pass_location')->nullable()->comment('通行地点');
             $table->string('pass_way', 50)->nullable()->comment('通道');

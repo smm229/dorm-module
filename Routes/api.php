@@ -62,26 +62,35 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','DormPermissio
     $api->group(['prefix'=>'history'],function ($api){
         $api->post('list',         'DormHistoryController@lists');//住宿历史列表
         $api->post('access/record',       'DormHistoryController@student_access'); //学生、教师通行记录
+        //晚归记录
+        $api->post('later',         'DormHistoryController@later');//晚归记录
+        $api->post('noBack',         'DormHistoryController@noBack');//未归记录
 
     });
 
+    //楼宇实时查询
+    $api->group(['prefix'=>'information'],function ($api){
+        $api->post('realtime',         'InformationController@realtime');//实时查寝
+        $api->post('data',              'InformationController@data');//综合数据
+
+    });
+
+    //管理员相关
     $api->group(['prefix' => 'admin'], function ($apione) {
-        $apione->post('categorylist',  'AdminController@categoryList');
-        $apione->post('teacherlist',   'AdminController@teacherList');
-        $apione->post('teacheradd',    'AdminController@create');
-        $apione->post('adminlist',     'AdminController@adminList');
-        $apione->post('delete',        'AdminController@delete');
-        $apione->post('binddorm',      'AdminController@bindDorm');
         $apione->post('logout',        'AuthController@logout');//退出
+        $apione->post('add',           'AdminController@create');//添加管理员
+        $apione->post('lists',         'AdminController@lists');//获取管理员列表
+        $apione->post('delete',        'AdminController@delete');//禁用管理员
+        $apione->post('binddorm',      'AdminController@bindDorm');//绑定宿舍
+        $apione->post('changePwd',     'AdminController@changePwd');//修改密码
+        $apione->post('setsysconfig',  'AdminController@setSysconfig');//系统设置
+        $apione->post('getsysconfig',  'AdminController@getSysconfig');//获取系统配置
+
+
 
     });
 
-    $api->group(['prefix' => 'facility'], function ($apione) {
-        $apione->post('list',          'FacilityController@index');
-        $apione->post('edit',          'FacilityController@edit');
-        $apione->post('delete',        'FacilityController@delete');
-        $apione->post('test',          'FacilityController@test');
-    });
+
 });
 
 
