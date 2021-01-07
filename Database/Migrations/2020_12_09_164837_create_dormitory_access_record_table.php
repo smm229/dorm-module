@@ -28,7 +28,7 @@ class CreateDormitoryAccessRecordTable extends Migration
             $table->string('pass_way')->comment('通道名称');
             $table->string('direction', 50)->nullable()->comment('方向');
             $table->string('abnormalType', 50)->nullable()->comment('类型');
-            $table->tinyInteger('status',1)->nullable()->comment('状态,0正常1晚归');
+            $table->tinyInteger('status')->nullable()->comment('状态,0正常1晚归');
             $table->dateTime('pass_time')->comment('通行时间');
             $table->string('cover')->nullable()->comment('识别照片');
             $table->timestamp('created_at')->nullable()->useCurrent();

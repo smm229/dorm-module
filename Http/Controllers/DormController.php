@@ -6,6 +6,7 @@ use App\Exports\Export;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Modules\Dorm\Entities\DormitoryBuildingDevice;
 use Modules\Dorm\Entities\DormitoryCategory;
 use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryRoom;
@@ -13,13 +14,16 @@ use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Entities\DormitoryUsersBuilding;
 use Modules\Dorm\Http\Requests\DormitoryBuildingsValidate;
 use Excel;
+use senselink;
 
 class DormController extends Controller
 {
 
     public function __construct()
     {
+        $this->senselink = new senselink();
         $this->middleware('AuthDel')->only(['del','del_cate']);
+
     }
 
     /*
@@ -88,23 +92,38 @@ class DormController extends Controller
             if(DormitoryGroup::whereTitle($request->title)->first()){
                 throw new \Exception('请更换名称');
             }
-            DB::transaction(function () use ($request){
-                $buildid = DormitoryGroup::insertGetId([
-                    'title'         =>  $request->title,
-                    'type'          =>  1,
-                    'buildtype'    =>  $request->buildtype,
-                    'floor'         =>  $request->floor
-                ]);
+            DB::beginTransaction();
+            $buildid = DormitoryGroup::insertGetId([
+                'title'         =>  $request->title,
+                'type'          =>  1,
+                'buildtype'     =>  $request->buildtype,
+                'floor'         =>  $request->floor,
+            ]);
+            if ($request->teachers) {
                 $users = explode(',',$request->teachers);
-                $build = ['buildid'=>$buildid];
+                $build = ['buildid' => $buildid];
                 //宿管关联表
                 array_walk($users, function (&$value, $key, $build) {
                     $value = array_merge(['idnum'=>$value], $build);
                 }, $build);
                 DormitoryUsersBuilding::insert($users);
-            });
-            return showMsg('操作成功',200);
-        }catch(\Exception $e){
+            }
+            //如果添加成功，添加link
+            if ($buildid) {
+                $res = $this->senselink->linkgroup_add($request->title, 1);
+                if (isset($res['data']) && isset($res['data']['id'])) {
+                    $upArr = [
+                        'groupid' => $res['data']['id'],
+                    ];
+                    $upRes = DormitoryGroup::where('id', $buildid)->update($upArr);
+                    DB::commit();
+                    return showMsg('操作成功',200);
+                } else {
+                    DB::rollBack();
+                    return showMsg('添加失败');
+                }
+            }
+        }catch(\Exception $e) {
             return showMsg('添加失败');
         }
     }
@@ -119,8 +138,8 @@ class DormController extends Controller
     * @param teachers 宿管老师idnum集合
     */
     public function edit(DormitoryBuildingsValidate $request){
-        try{
-            if($info = DormitoryGroup::whereId($request->id)->first()){
+         try{
+            if(!$info = DormitoryGroup::whereId($request->id)->first()){
                 throw new \Exception('信息不存在');
             }
             if(DormitoryGroup::whereTitle($request->title)->where('id','<>',$request->id)->first()){
@@ -132,21 +151,22 @@ class DormController extends Controller
             }
             DB::transaction(function () use ($request,$info){
                 $info->title         =  $request->title;
-                $info->buildtype    =  $request->buildtype;
+                $info->buildtype     =  $request->buildtype;
                 $info->floor         =  $request->floor;
-                $info->ename         =  $request->ename ?? '';
-                $info->icon          =  $request->icon ?? '';
                 $info->save();
-                $build = ['buildid'=>$info->id];
-
-                DormitoryUsersBuilding::where($build)->delete();
-                $users = explode(',',$request->teachers);
-                //宿管关联表
-                array_walk($users, function (&$value, $key, $build) {
-                    $value = array_merge(['idnum'=>$value], $build);
-                }, $build);
-                DormitoryUsersBuilding::insert($users);
+                if ($request->teachers) {
+                    $build = ['buildid'=>$info->id];
+                    DormitoryUsersBuilding::where($build)->delete();
+                    $users = explode(',',$request->teachers);
+                    //宿管关联表
+                    array_walk($users, function (&$value, $key, $build) {
+                        $value = array_merge(['idnum'=>$value], $build);
+                    }, $build);
+                    DormitoryUsersBuilding::insert($users);
+                }
             });
+            //更新link的信息
+            $res = $this->senselink->linkgroup_edit($request->title, $info['groupid']);
             return showMsg('操作成功',200);
         }catch(\Exception $e){
             return showMsg('添加失败');
@@ -157,14 +177,28 @@ class DormController extends Controller
      * 删除楼宇
      */
     public function del(Request $request){
-        if(!DormitoryGroup::whereId($request->id)->first()){
+        if(!$info = DormitoryGroup::whereId($request->id)->first()){
             return showMsg('信息不存在');
         }
         if(DormitoryUsersBuilding::where('buildid',$request->id)->count()>0 || DormitoryRoom::where('buildid',$request->id)->count()>0){
             return showMsg('无法删除');
         }
-        DormitoryGroup::whereId($request->id)->delete();
-        return showMsg('删除成功',200);
+        if (!$info['groupid']) {
+            DormitoryGroup::whereId($request->id)->delete();
+            return showMsg('删除成功',200);
+        } else {
+            DB::beginTransaction();
+            DormitoryGroup::whereId($request->id)->delete();
+            //删除link上的组
+            $res = $this->senselink->linkgroup_del($info['groupid']);
+            if (isset($res['code']) && $res['code'] == 200) {
+                DB::commit();
+                return showMsg('删除成功',200);
+            } else {
+                DB::rollBack();
+                return showMsg('删除失败');
+            }
+        }
     }
 
     /*
@@ -254,5 +288,36 @@ class DormController extends Controller
             ->orderBy('sort','asc')
             ->get(['id','name']);
         return showMsg('获取成功',200,$list);
+    }
+
+    /**
+     * 楼宇分配设备
+     */
+    public function bindDevice(Request $request) {
+        if (!$request['id']) {
+            return showMsg('参数不全');
+        }
+        if(!$info = DormitoryGroup::whereId($request->id)->first()){
+            return showMsg('信息不存在');
+        }
+        //删除所有关系表
+        try {
+            $delRes = DormitoryBuildingDevice::where('groupid', $request['id'])->delete();
+            $res = $this->senselink->linkgroup_edit('', $info['groupid'], $request['devices']);
+            if (isset($res['data']['devices']) && $res['data']['devices']) {
+                //生成本地数据库关联表
+                foreach ($res['data']['devices'] as $k => $v) {
+                    $deviceIdArr[$k]['groupid']  = $request->id;
+                    $deviceIdArr[$k]['deviceid'] = $v['id'];
+                }
+                $res = DormitoryBuildingDevice::insert($deviceIdArr);
+                if (!$res) {
+                    return showMsg('添加失败');
+                }
+            }
+            return showMsg('添加成功', 200);
+        } catch (\Exception $exception) {
+            return showMsg('添加失败');
+        }
     }
 }

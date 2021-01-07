@@ -33,10 +33,12 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','DormPermissio
         $api->post('add',          'DormController@add');//添加宿舍楼宇
         $api->post('edit',         'DormController@edit');//编辑宿舍楼宇
         $api->post('del',          'DormController@del');//删除宿舍楼宇
-        $api->post('cate/add',    'DormController@add_cate');//添加楼宇、宿舍类型
-        $api->post('cate/edit',   'DormController@edit_cate');//编辑楼宇、宿舍类型
-        $api->post('cate/del',    'DormController@del_cate');//删除楼宇、宿舍类型
-        $api->post('cate/list',   'DormController@cate_list');//楼宇、宿舍类型列表
+        $api->post('cate/add',     'DormController@add_cate');//添加楼宇、宿舍类型
+        $api->post('cate/edit',    'DormController@edit_cate');//编辑楼宇、宿舍类型
+        $api->post('cate/del',     'DormController@del_cate');//删除楼宇、宿舍类型
+        $api->post('cate/list',    'DormController@cate_list');//楼宇、宿舍类型列表
+        $api->post('binddevice',   'DormController@bindDevice');//楼宇分配设备
+
 
     });
     //宿舍
@@ -86,11 +88,16 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','DormPermissio
         $apione->post('setsysconfig',  'AdminController@setSysconfig');//系统设置
         $apione->post('getsysconfig',  'AdminController@getSysconfig');//获取系统配置
 
-
-
     });
 
-
+    //设备相关
+    $api->group(['prefix' => 'device'], function ($apione) {
+        $apione->post('lists',             'DeviceController@lists');//获取设备列表
+        $apione->post('info',              'DeviceController@info');//获取设备的详情
+        $apione->post('delete',            'DeviceController@delete');//删除设备
+        $apione->post('edit',              'DeviceController@edit');//编辑设备
+        $apione->post('getpersonbydevice', 'DeviceController@getPersonByDevice');//编辑设备
+    });
 });
 
 

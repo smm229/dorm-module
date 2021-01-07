@@ -2,13 +2,18 @@
 
 namespace Modules\Dorm\Http\Controllers;
 
+use App\Models\Student;
+use App\Models\Teacher;
 use Dingo\Api\Routing\Helpers;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\DB;
+use Modules\Dorm\Entities\DormitoryBuildingDevice;
 use Modules\Dorm\Entities\DormitoryGroup;
+use Modules\Dorm\Entities\DormitoryUsers;
+use Modules\Dorm\Entities\DormitoryUsersGroup;
 use senselink;
 
 class DeviceController extends Controller
@@ -37,9 +42,9 @@ class DeviceController extends Controller
         //取出楼宇下的设备
         if ($request['buildid']) {
             $deviceids = DB::table('dormitory_building_device')->where('groupid', $request['buildid'])->pluck('deviceid')->toArray();
-           if ($deviceids) {
-               $ids = implode(',', $deviceids);
-           }
+            if ($deviceids) {
+                $ids = implode(',', $deviceids);
+            }
         }
         if (($request['buildid'] && $ids) || $ids == '') {
             $result = $this->senselink->linkdevice_list($ids, $request['page'], $request['pageSize'],$request['location'], $request['name']);
@@ -104,39 +109,90 @@ class DeviceController extends Controller
         if (!$request['id']) {
             return $this->response->error('参数错误',201);
         }
-
-        $result = $this->senselink->linkdevice_edit($request['id'], $request['name'], $request['location'], $request['direction'], $request['groupid']);
-        //设备绑定员工组，要生成记录
-        if ($request['groupid']) {
-            $insert = [
-                'deviceid' => $request['id'],
-                'groupid'  => $request['groupid']
-            ];
-        }
-        if (!$result['status_code'] != 200) {
+        //因为设备默认要有员工，访客，黑名单的组，所以要加上123
+        $groupid = [$request['groupid'], 1, 2, 3];
+        $result = $this->senselink->linkdevice_edit($request['id'], $request['name'], $request['location'], $request['direction'], $groupid);
+        if ($result['code'] != 200 || false == $result['code']) {
             return $this->response->error('编辑数据失败',201);
         }
+        //设备绑定员工组，要生成记录
+        if ($request['groupid']) {
+            try {
+                DB::beginTransaction();
+                //删除设备的绑定关系
+                $delRes = DormitoryBuildingDevice::where('deviceid', $request['id'])->delete();
+                $insert = [
+                    'deviceid' => $request['id'],
+                    'groupid'  => $request['groupid'],
+                ];
+                $insertRes = DormitoryBuildingDevice::insertGetId($insert);
+                if ($insertRes) {
+                    DB::commit();
+                } else {
+                    DB::rollBack();
+                    return $this->response->error('编辑数据失败',201);
+                }
+            } catch (\Exception $exception) {
+                return $this->response->error('编辑数据失败',201);
+            }
+
+        }
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $result]);
+
     }
 
+    /**
+     * 删除设备
+     * @param Request $request
+     * @return \Dingo\Api\Http\Response|void
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
     public function delete(Request $request)
     {
         if (!$request['id']) {
-            return $this->response->error('请求数据错误',201);
+            return $this->response->error('参数错误',201);
         }
-        $request_url = $this->link_host.'/api/v3/device/delete?timestamp='.$this->timestamp.'&app_key='.$this->app_key.'&sign='.$this->sign.'&id='.$request['id'];
-        $client = new Client();
-        $response = $client->request('get', $request_url);
-        $result = json_decode($response->getBody()->getContents(), true);
-        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $result]);
+        //清除设备关系表
+        DB::beginTransaction();
+        $delRes = DormitoryBuildingDevice::where('deviceid', $request['id'])->delete();
+        $result = $this->senselink->linkdevice_del($request['id']);
+        if ($result['code'] == 200) {
+            DB::commit();
+        } else {
+            DB::rollBack();
+            return $this->response->error('删除设备失败',201);
+        }
+        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $delRes]);
     }
 
-    public function test(Request $request)
-    {
-        $senselink = new senselink();
-        $groupid   = '8';
-        $res = $senselink->linkgroup_del($groupid);
-        dd($res);
-
+    /**
+     * 获取设备下的人员列表
+     * @param Request $request
+     */
+    public function getPersonByDevice(Request $request){
+        if (!$request['id']) {
+            return $this->response->error('参数错误',201);
+        }
+        try{
+            $groupidArr = DormitoryBuildingDevice::where('deviceid', $request['id'])->pluck('groupid')->toArray();
+            $perArrs = [];
+            $perArr = DormitoryUsersGroup::whereIn('groupid', $groupidArr)->paginate($request['pageSize'])->toArray();
+            if ($perArr['data']) {
+                $senselinkIds = [];
+                foreach ($perArr['data'] as $v) {
+                    $senselinkIds[] = $v['senselink_id'];
+                }
+                //获取教师的列表
+                $teacherArr = Teacher::whereIn('senselink_id', $senselinkIds)->get()->toArray();
+                $studentArr = Student::whereIn('senselink_id', $senselinkIds)->get()->toArray();
+                $perArrs = array_merge($teacherArr, $studentArr);
+            }
+            $perArr['data'] = $perArrs;
+        } catch (\Exception $exception) {
+            return $this->response->error('获取人员失败',201);
+        }
+        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $perArr]);
     }
+
+
 }

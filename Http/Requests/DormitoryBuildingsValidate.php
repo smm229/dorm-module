@@ -17,10 +17,9 @@ class DormitoryBuildingsValidate extends FormRequest
     public function rules()
     {
         return [
-            'title'  =>  'required',
+            'title'      =>  'required',
             'buildtype'  =>  'required',
-            'floor'       =>  'required',
-            'teachers'   =>  'required'
+            'floor'      =>  'required',
         ];
     }
 
@@ -37,10 +36,9 @@ class DormitoryBuildingsValidate extends FormRequest
     public function messages()
     {
         return [
-            'title.required'     =>  '请输入楼宇名称',
+            'title.required'         =>  '请输入楼宇名称',
             'buildtype.required'     => '请选择楼宇类型',
-            'floor.required'          =>  '请输入楼层',
-            'teachers.required'      =>  '请选择宿管老师'
+            'floor.required'         =>  '请输入楼层',
         ];
     }
 
