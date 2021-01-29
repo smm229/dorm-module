@@ -60,7 +60,7 @@ class NoRecord extends Command
                             ->selectRaw('max(id) as id')
                             ->where('buildid',$v->id)
                             ->whereType(1)
-                            ->whereBetween('pass_time',[$date,$date.' 23:59:59']) //时间段内最后一次
+                            ->whereBetween('pass_time',[$date,date('Y-m-d 23:59:59',strtotime("-1 day"))]) //时间段内最后一次
                             ->groupBy('idnum')
                             ->get();
                     })
