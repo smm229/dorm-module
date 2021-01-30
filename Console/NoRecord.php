@@ -3,6 +3,7 @@
 namespace Modules\Dorm\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Modules\Dorm\Entities\DormitoryAccessRecord;
 use Modules\Dorm\Entities\DormitoryBeds;
 use Modules\Dorm\Entities\DormitoryConfig;
@@ -92,7 +93,7 @@ class NoRecord extends Command
                                 'build_name' => $value['build_name'],
                                 'roomnum' => $value['room_num'],
                                 'bednum' => $value['bednum'],
-                                'date' => $date
+                                'date' => date('Y-m-d',strtotime("-1 day"))
                             ];
                             DormitoryNoRecord::insert($arr);
                         }
