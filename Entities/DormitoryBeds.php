@@ -16,12 +16,8 @@ class DormitoryBeds extends Model
 
     protected $table = 'dormitory_beds';
 
-    protected $appends = ['check_in','username','build_name','room_num','floornum']; //是否入住，学员名称,楼宇名称，房间名称
+    protected $appends = ['check_in','username','build_name','room_num']; //是否入住，学员名称,楼宇名称，房间名称
 
-    //楼层
-    public function getFloornumAttribute(){
-        return DormitoryRoom::whereId($this->roomid)->value('floornum');
-    }
     //是否有学员入住
     public function getCheckInAttribute()
     {
