@@ -38,21 +38,21 @@ class DeviceController extends Controller
     public function lists(Request $request)
     {
         $ids = '';
-        $res = [];
         //取出楼宇下的设备
-        if ($request['buildid']) {
-            $deviceids = DB::table('dormitory_building_device')->where('groupid', $request['buildid'])->pluck('deviceid')->toArray();
-            if ($deviceids) {
-                $ids = implode(',', $deviceids);
+        if (!empty($request['buildid'])) {
+            $deviceids = DB::table('dormitory_building_device')->where('groupid', $request['buildid'])->pluck('deviceid')->toArray() ;
+            if (!$deviceids) { //无设备
+                return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => []]);
             }
-        }
-        if (($request['buildid'] && $ids) || $ids == '') {
+            $ids = implode(',', $deviceids);
             $result = $this->senselink->linkdevice_list($ids, $request['page'], $request['pageSize'],$request['location'], $request['name']);
-            if ($result['message'] != 'OK') {
-                return $this->response->error('获取列表失败',201);
-            }
-            $res = $result['data'];
+        }else{ //全部
+            $result = $this->senselink->linkdevice_list($ids, $request['page'], $request['pageSize'],$request['location'], $request['name']);
         }
+        if ($result['message'] != 'OK') {
+            return $this->response->error('获取列表失败',201);
+        }
+        $res = $result['data'];
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
     }
 

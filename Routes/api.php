@@ -45,6 +45,7 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','DormPermissio
     $api->group(['prefix'=>'room'],function ($api){
         $api->post('list',         'DormRoomController@lists');//宿舍列表
         $api->post('add',          'DormRoomController@add');//添加宿舍
+        $api->post('addList',      'DormRoomController@addList');//批量添加宿舍
         $api->post('edit',         'DormRoomController@edit');//编辑宿舍
         $api->post('del',          'DormRoomController@del');//删除宿舍
 

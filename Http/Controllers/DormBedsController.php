@@ -33,7 +33,8 @@ class DormBedsController extends Controller
             'bednum'        =>    '床位号',
             'idnum'         =>    '住宿人员编号'
         ]];
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         $data = DormitoryBeds::whereIn('buildid',$buildids)->get()->toArray();
         $excel = new Export($data, $header,'床位信息');
         return Excel::download($excel, time().'.xlsx');
@@ -45,10 +46,11 @@ class DormBedsController extends Controller
      * @param floornum int 楼层
      */
     public function lists(Request $request){
-        $pagesize = $request->pagesize ?? 12;
+        $pagesize = $request->pageSize ?? 12;
         $type = $request->type ?? 1;//类型 1自己查看床位列表 2调宿时查看床位列表
         //当前宿管管理那栋楼
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         //DB::connection('mysql_dorm')->enableQueryLog();
         $list = DormitoryRoom::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request,$type){
@@ -155,9 +157,10 @@ class DormBedsController extends Controller
      * @param idnum int 学号
      */
     public function users(Request $request){
-        $pagesize = $request->pagesize ?? 12;
+        $pagesize = $request->pageSize ?? 12;
         //当前宿管查看自己的楼栋
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         $roomids = DormitoryRoom::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
                 if($request->buildid) $q->where('buildid',$request->buildid);

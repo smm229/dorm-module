@@ -35,7 +35,7 @@ class InformationController extends Controller
      * @param floornum int 楼层
      */
     public function realtime(Request $request){
-        $pagesize = $request->pagesize ?? 15;
+        $pagesize = $request->pageSize ?? 15;
         //只查询自己权限的宿舍
         $uid = auth()->user() ? auth()->user()->id : 1;//白名单
         $idnum = auth()->user() ? auth()->user()->idnum : '';
@@ -45,7 +45,7 @@ class InformationController extends Controller
                 if ($request->floornum) $q->where('floornum', $request->floornum);
                 //按照楼栋筛选
                 if ($uid!=1) $q->whereIn('buildid',function ($query) use ($idnum){
-                    $query->from('dormitory_users_building')->where('idnum',$idnum)->pluck('buildid');
+                    $query->select('buildid')->from('dormitory_users_building')->where('idnum',$idnum);
                 });
             })
             ->with(['dormitory_beds'=>function ($q){

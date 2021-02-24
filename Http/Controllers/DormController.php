@@ -65,12 +65,12 @@ class DormController extends Controller
      * 宿舍楼列表
      */
     public function lists(Request $request){
-        $pagesize = $request->pagesize ?? 12;
+        $pagesize = $request->pageSize ?? 12;
         //只查询自己权限的楼宇
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
 
-        $list = DormitoryGroup::select('id', 'title', 'floor')
-            ->whereType(1)
+        $list = DormitoryGroup::whereType(1)
             ->whereIn('id',$buildids)
             ->with(['dormitory_users' => function ($q) {
                 $q->select('dormitory_users.id', 'dormitory_users.username', 'dormitory_users.idnum');

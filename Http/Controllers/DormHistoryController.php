@@ -23,8 +23,9 @@ class DormHistoryController extends Controller
      * @param idnum string 学号
      */
     public function lists(Request $request){
-        $pagesize = $request->pagesize ?? 10;
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $pagesize = $request->pageSize ?? 10;
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         $list = DormitoryStayrecords::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
                 if($request->username) $q->whereUsername($request->username);
@@ -51,7 +52,8 @@ class DormHistoryController extends Controller
             'created_at'        =>    '入住时间',
             'updated_at'        =>    '退宿时间'
         ]];
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         $data = DormitoryStayrecords::whereIn('buildid',$buildids)
             ->get()->toArray();
         $excel = new Export($data, $header,'住宿历史');
@@ -69,8 +71,9 @@ class DormHistoryController extends Controller
      */
     public function student_access(Request $request){
         $type = $request->type ?? 1;
-        $pagesize = $request->pagesize ?? 10;
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $pagesize = $request->pageSize ?? 10;
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         $list = DormitoryAccessRecord::whereIn('buildid',$buildids)
             ->whereType($type)
             ->whereStatus(0)
@@ -104,7 +107,8 @@ class DormHistoryController extends Controller
             'abnormalType'     =>      '通行状态',
             'pass_time'        =>    '通行时间'
         ]];
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         $data = DormitoryAccessRecord::whereIn('buildid',$buildids)
             ->whereType($type)
             ->whereStatus(0)
@@ -124,8 +128,9 @@ class DormHistoryController extends Controller
     public function later(Request $request){
         $start_date = $request->start_date ?? date('Y-m-d');
         $end_date = $request->end_date ?? date('Y-m-d 23:59:59');
-        $buildids = RedisGet('builds-'.auth()->user()->id);
-        $pagesize = $request->pagesize ?? 10;
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
+        $pagesize = $request->pageSize ?? 10;
         $list = DormitoryAccessRecord::whereType(1)
             ->whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
@@ -146,10 +151,11 @@ class DormHistoryController extends Controller
      * @param end_date 开始日期
      */
     public function noBack(Request $request){
-        $pagesize = $request->pagesize ?? 10;
+        $pagesize = $request->pageSize ?? 10;
         $start_date = $request->start_date ?? date('Y-m-d');
         $end_date = $request->end_date ?? date('Y-m-d');
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         $list = DormitoryNoBackRecord::whereIn('buildid',$buildids)
             ->whereBetween('date',[$start_date,$end_date])
             ->whereType(1)

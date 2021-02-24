@@ -10,6 +10,7 @@ use Modules\Dorm\Entities\DormitoryAccessRecord;
 use Modules\Dorm\Entities\DormitoryBeds;
 use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryRoom;
+use Modules\Dorm\Http\Requests\DormitoryRoomListValidate;
 use Modules\Dorm\Http\Requests\DormitoryRoomValidate;
 use Excel;
 
@@ -32,7 +33,8 @@ class DormRoomController extends Controller
             'bedsnum'           =>  '床位数',
             'buildtype_name'   =>  '床铺类型'
         ]];
-        $buildids = RedisGet('builds-'.auth()->user()->id);
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         $data = DormitoryRoom::whereIn('buildid',$buildids)->get()->toArray();
         $excel = new Export($data, $header,'宿舍信息');
         return Excel::download($excel, time().'.xlsx');
@@ -44,10 +46,10 @@ class DormRoomController extends Controller
      * @param floornum int 楼层
      */
     public function lists(Request $request){
-        $pagesize = $request->pagesize ?? 12;
+        $pagesize = $request->pageSize ?? 12;
         //只查询自己权限的宿舍
-        $buildids = RedisGet('builds-'.auth()->user()->id);
-
+        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $buildids = RedisGet('builds-'.$idnum);
         $list = DormitoryRoom::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request) {
             if ($request->buildid) $q->where('buildid', $request->buildid);
@@ -100,6 +102,55 @@ class DormRoomController extends Controller
     }
 
     /*
+     * 批量添加宿舍
+    * @param start 起始房间号
+    * @param end 起始房间号
+    * @param buildtype 楼宇类型id
+    * @param floornum 楼层
+    * @param bedsnum 床位数
+    * @param buildid 楼宇id
+    */
+    public function addList(DormitoryRoomListValidate $request){
+        if($request->start>$request->end){
+            return showMsg('起始房间号不能大于截止房间号');
+        }
+        try{
+            DB::transaction(function () use ($request){
+                for($j=$request->start;$j<=$request->end;$j++) {
+                    if (DormitoryRoom::where([
+                        'roomnum' => $j,
+                        'floornum' => $request->floornum,
+                        'buildid' => $request->buildid
+                    ])->first()
+                    ) {
+                        continue;
+                    }
+                    //房间
+                    $roomid = DormitoryRoom::insertGetId([
+                        'roomnum' => $j,
+                        'buildtype' => $request->buildtype,
+                        'floornum' => $request->floornum,
+                        'bedsnum' => $request->bedsnum,
+                        'buildid' => $request->buildid
+                    ]);
+                    //床位
+                    for ($i = 1; $i <= $request->bedsnum; $i++) {
+                        $arr = [
+                            'buildid' => $request->buildid,
+                            'roomid' => $roomid,
+                            'bednum' => $i
+                        ];
+                        DormitoryBeds::insert($arr);
+                    }
+                }
+            });
+            return showMsg('操作成功',200);
+        }catch(\Exception $e){
+            return showMsg('添加失败');
+        }
+    }
+
+    /*
     * 编辑宿舍
     * @param roomnum 房间号
     * @param buildtype 楼宇类型id
@@ -110,7 +161,7 @@ class DormRoomController extends Controller
     */
     public function edit(DormitoryRoomValidate $request){
         try{
-            if($info = DormitoryRoom::whereId($request->id)->first()){
+            if(!$info = DormitoryRoom::whereId($request->id)->first()){
                 throw new \Exception('信息不存在');
             }
             if(DormitoryRoom::where([
@@ -143,7 +194,7 @@ class DormRoomController extends Controller
             });
             return showMsg('操作成功',200);
         }catch(\Exception $e){
-            return showMsg('添加失败');
+            return showMsg('操作失败'.$e->getMessage());
         }
     }
 
