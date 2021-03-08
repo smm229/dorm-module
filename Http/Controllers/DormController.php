@@ -13,6 +13,7 @@ use Modules\Dorm\Entities\DormitoryRoom;
 use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Entities\DormitoryUsersBuilding;
 use Modules\Dorm\Http\Requests\DormitoryBuildingsValidate;
+use Modules\Dorm\Jobs\AllocateBuild;
 use Excel;
 use senselink;
 
@@ -57,8 +58,11 @@ class DormController extends Controller
             }
         }
         $excel = new Export($data, $header,'宿舍楼信息');
-        return Excel::download($excel, time().'.xlsx');
-
+        $file = 'file/'.time().'.xlsx';
+        if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
+            return showMsg('成功',200,['url'=>$file]);
+        }
+        return showMsg('下载失败');
     }
 
     /*
@@ -67,7 +71,7 @@ class DormController extends Controller
     public function lists(Request $request){
         $pagesize = $request->pageSize ?? 12;
         //只查询自己权限的楼宇
-        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $idnum = auth()->user()->idnum;
         $buildids = RedisGet('builds-'.$idnum);
 
         $list = DormitoryGroup::whereType(1)
@@ -99,6 +103,7 @@ class DormController extends Controller
                 'buildtype'     =>  $request->buildtype,
                 'floor'         =>  $request->floor,
             ]);
+            $users = [];
             if ($request->teachers) {
                 $users = explode(',',$request->teachers);
                 $build = ['buildid' => $buildid];
@@ -115,8 +120,12 @@ class DormController extends Controller
                     $upArr = [
                         'groupid' => $res['data']['id'],
                     ];
-                    $upRes = DormitoryGroup::where('id', $buildid)->update($upArr);
+                    DormitoryGroup::where('id', $buildid)->update($upArr);
                     DB::commit();
+                    //队列修改管理员所属楼宇
+                    if($users) {
+                        AllocateBuild::dispatch($users);
+                    }
                     return showMsg('操作成功',200);
                 } else {
                     DB::rollBack();
@@ -149,25 +158,35 @@ class DormController extends Controller
             if($request->floor<$info->floor){
                 throw new \Exception('楼层不能低于原楼层');
             }
-            DB::transaction(function () use ($request,$info){
-                $info->title         =  $request->title;
-                $info->buildtype     =  $request->buildtype;
-                $info->floor         =  $request->floor;
-                $info->save();
-                if ($request->teachers) {
-                    $build = ['buildid'=>$info->id];
-                    DormitoryUsersBuilding::where($build)->delete();
-                    $users = explode(',',$request->teachers);
-                    //宿管关联表
-                    array_walk($users, function (&$value, $key, $build) {
-                        $value = array_merge(['idnum'=>$value], $build);
-                    }, $build);
-                    DormitoryUsersBuilding::insert($users);
-                }
-            });
+            DB::beginTransaction();
+            $info->title         =  $request->title;
+            $info->buildtype     =  $request->buildtype;
+            $info->floor         =  $request->floor;
+            $info->save();
+            $users = [];
+            if ($request->teachers) {
+                $build = ['buildid'=>$info->id];
+                DormitoryUsersBuilding::where($build)->delete();
+                $users = explode(',',$request->teachers);
+                //宿管关联表
+                array_walk($users, function (&$value, $key, $build) {
+                    $value = array_merge(['idnum'=>$value], $build);
+                }, $build);
+                DormitoryUsersBuilding::insert($users);
+            }
             //更新link的信息
             $res = $this->senselink->linkgroup_edit($request->title, $info['groupid']);
-            return showMsg('操作成功',200);
+            if (isset($res['data']) && isset($res['data']['id'])) {
+                 DB::commit();
+                 //队列修改管理员所属楼宇
+                if($users) {
+                    AllocateBuild::dispatch($users);
+                }
+                 return showMsg('修改成功',200);
+            } else {
+                 DB::rollBack();
+                 return showMsg('修改失败');
+            }
         }catch(\Exception $e){
             return showMsg('添加失败');
         }

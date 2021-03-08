@@ -33,11 +33,15 @@ class DormRoomController extends Controller
             'bedsnum'           =>  '床位数',
             'buildtype_name'   =>  '床铺类型'
         ]];
-        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $idnum = auth()->user()->idnum;
         $buildids = RedisGet('builds-'.$idnum);
         $data = DormitoryRoom::whereIn('buildid',$buildids)->get()->toArray();
         $excel = new Export($data, $header,'宿舍信息');
-        return Excel::download($excel, time().'.xlsx');
+        $file = 'file/'.time().'.xlsx';
+        if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
+            return showMsg('成功',200,['url'=>$file]);
+        }
+        return showMsg('下载失败');
     }
 
     /*
@@ -48,7 +52,7 @@ class DormRoomController extends Controller
     public function lists(Request $request){
         $pagesize = $request->pageSize ?? 12;
         //只查询自己权限的宿舍
-        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $idnum = auth()->user()->idnum;
         $buildids = RedisGet('builds-'.$idnum);
         $list = DormitoryRoom::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request) {
@@ -90,6 +94,7 @@ class DormRoomController extends Controller
                     $arr = [
                         'buildid' => $request->buildid,
                         'roomid' => $roomid,
+                        'room_num'=>$request->roomnum,
                         'bednum' => $i
                     ];
                     DormitoryBeds::insert($arr);
@@ -138,6 +143,7 @@ class DormRoomController extends Controller
                         $arr = [
                             'buildid' => $request->buildid,
                             'roomid' => $roomid,
+                            'room_num'=>$j,
                             'bednum' => $i
                         ];
                         DormitoryBeds::insert($arr);
@@ -187,6 +193,7 @@ class DormRoomController extends Controller
                     $arr = [
                         'buildid' => $request->buildid,
                         'roomid' => $info->id,
+                        'room_num'=>$info->roomnum,
                         'bednum' => $i
                     ];
                     DormitoryBeds::insert($arr);

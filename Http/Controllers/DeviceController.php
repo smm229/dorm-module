@@ -194,5 +194,31 @@ class DeviceController extends Controller
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $perArr]);
     }
 
+    /*
+     * 设备告警列表
+     */
+    public function alarm(Request $request){
+        $page = $request->page ?? 1;
+        $size = $request->pageSize ?? 10;
+        $result = $this->senselink->linkdevice_alarm_list($page, $size);
+        if($result['code']!=200){
+            return showMsg('请刷新重试');
+        }
+        return showMsg('获取成功', 200, $result['data']);
+    }
 
+    /*
+     * 解除设备告警
+     */
+    public function relieve(Request $request){
+        if(!$request->traceId){
+            return showMsg('请选择设备');
+        }
+        $result = $this->senselink->linkdevice_disarm($request->traceId);
+        if($result['code']!=200){
+            return showMsg('操作失败');
+        }
+        return showMsg('操作成功', 200);
+
+    }
 }

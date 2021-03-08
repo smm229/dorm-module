@@ -13,11 +13,13 @@ use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Entities\DormitoryUsersBuilding;
 use Illuminate\Support\Facades\DB;
 use Modules\Dorm\Http\Requests\PasswordValidate;
+use phpDocumentor\Reflection\Types\Integer;
 
 class AdminController extends Controller
 {
     use Helpers;
 
+    protected $guard = 'dorm';
     /**
      * 添加子管理员账号
      * 可批量添加
@@ -59,7 +61,6 @@ class AdminController extends Controller
                 }
             }
             if ($title) $req->where($title, 'like', "%$search%");
-            $req->where('disable', 0);
         })->orderBy('id', 'desc')->paginate($request['pageSize']);
         if (!$res) {
             return $this->response->error('获取管理员失败',201);
@@ -68,15 +69,15 @@ class AdminController extends Controller
     }
 
     /**
-     * 宿管管理员禁止登陆
+     * 宿管管理员禁止or开放登陆
      * @param Request $request
      */
-    public function delete(Request $request)
+    public function editstatus(Request $request)
     {
-        if (!$request['id']) {
-            return $this->response->error('获取数据失败',201);
+        if (!$request['id'] || is_null($request['disable']) || !(integer)$request['disable'] > 1) {
+            return $this->response->error('缺少必填参数',201);
         }
-        $data = ['disable' => 1];
+        $data = ['disable' => $request['disable']];
         $res = DormitoryUsers::where('id', $request['id'])->update($data);
         if ($res) {
             return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
@@ -127,7 +128,7 @@ class AdminController extends Controller
      * @param repassword 重复密码
      */
     public function changePwd(PasswordValidate $request) {
-        $user = DormitoryUsers::find(auth()->user()->id);
+        $user = DormitoryUsers::find(auth($this->guard)->user()->id);
         if (!$user){
             return showMsg('用户不存在');
         }

@@ -69,6 +69,6 @@ class DormitoryGroup extends Model
          * 第三个参数：当前表跟中间表对应的外键
          * 第四个参数：要关联的表跟中间表对应的外键
          * */
-        return $this->belongsToMany(DormitoryUsers::class,'dormitory_users_building','buildid','idnum');
+        return $this->belongsToMany(DormitoryUsers::class,'dormitory_users_building','buildid','idnum','id','idnum');
     }
 }

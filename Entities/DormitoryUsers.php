@@ -18,7 +18,7 @@ class DormitoryUsers extends Authenticatable implements JWTSubject {
 
     protected $table = "dormitory_users";
 
-    protected $primaryKey = "idnum";
+    #protected $primaryKey = "idnum";
 
     protected $fillable = [];
 
@@ -35,7 +35,7 @@ class DormitoryUsers extends Authenticatable implements JWTSubject {
          * 第三个参数：当前表跟中间表对应的外键
          * 第四个参数：要关联的表跟中间表对应的外键
          * */
-        return $this->belongsToMany(DormitoryGroup::class,'dormitory_users_building','idnum','buildid');
+        return $this->belongsToMany(DormitoryGroup::class,'dormitory_users_building','idnum','buildid','idnum','id');
     }
 
     /**

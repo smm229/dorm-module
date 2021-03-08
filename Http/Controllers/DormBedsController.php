@@ -28,16 +28,26 @@ class DormBedsController extends Controller
      * 导出
      */
     public function export(Request $request){
+        ini_set('memory_limit', '256M');
         $header = [[
             'room_num'      =>    '房间号',
             'bednum'        =>    '床位号',
             'idnum'         =>    '住宿人员编号'
         ]];
-        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $idnum = auth()->user()->idnum;
         $buildids = RedisGet('builds-'.$idnum);
-        $data = DormitoryBeds::whereIn('buildid',$buildids)->get()->toArray();
+        $data = DB::table('dormitory_beds')
+            ->whereIn('buildid',$buildids)
+            ->get(['idnum','room_num','bednum'])
+            ->map(function ($value) {
+                return (array)$value;
+            })->toArray();
         $excel = new Export($data, $header,'床位信息');
-        return Excel::download($excel, time().'.xlsx');
+        $file = 'file/'.time().'.xlsx';
+        if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
+            return showMsg('成功',200,['url'=>$file]);
+        }
+        return showMsg('下载失败');
     }
 
     /*
@@ -49,7 +59,7 @@ class DormBedsController extends Controller
         $pagesize = $request->pageSize ?? 12;
         $type = $request->type ?? 1;//类型 1自己查看床位列表 2调宿时查看床位列表
         //当前宿管管理那栋楼
-        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $idnum = auth()->user()->idnum;
         $buildids = RedisGet('builds-'.$idnum);
         //DB::connection('mysql_dorm')->enableQueryLog();
         $list = DormitoryRoom::whereIn('buildid',$buildids)
@@ -159,7 +169,7 @@ class DormBedsController extends Controller
     public function users(Request $request){
         $pagesize = $request->pageSize ?? 12;
         //当前宿管查看自己的楼栋
-        $idnum = auth()->user()->username=='admin' ? 'admin' : auth()->user()->idnum;
+        $idnum = auth()->user()->idnum;
         $buildids = RedisGet('builds-'.$idnum);
         $roomids = DormitoryRoom::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
@@ -172,6 +182,13 @@ class DormBedsController extends Controller
             ->toArray();
         $list = DormitoryBeds::whereIn('roomid',$roomids)
             ->whereNotNull('idnum')
+            ->where(function ($query) use ($request){
+                if($request->idnum) $query->where('idnum',$request->idnum);
+
+            })
+            ->whereHas('student', function($q) use ($request){
+                if($request->username) $q->where('username',$request->username);
+            })
             ->with('student')
             ->paginate($pagesize);
         return showMsg('获取成功',200,$list);
