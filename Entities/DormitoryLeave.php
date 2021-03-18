@@ -17,18 +17,18 @@ class DormitoryLeave extends Model {
 
     protected $table = "dormitory_leave";
 
-    protected $appends = ['username','type_name'];
+    protected $appends = ['username'];//,'type_name'
 
     public function getUserNameAttribute()
     {
         return Student::where('idnum',$this->idnum)->value('username');
     }
 
-    //请假类型
-    public function getTypeNameAttribute()
-    {
-        return Category::where(['ckey'=>'leaves','id'=>$this->type])->value('name');
-    }
+//    //请假类型
+//    public function getTypeNameAttribute()
+//    {
+//        return Category::where(['ckey'=>'leaves','id'=>$this->type])->value('name');
+//    }
 
     //学生信息
    public function student(){

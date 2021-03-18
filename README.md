@@ -71,5 +71,12 @@ composer require smm229/dorm-module
 守护进程
 php artisan queue:work --daemon &
 或者
+nohup php artisan queue:listen >/dev/null 2>&1 &
+或者
 nohup php artisan queue:listen > /tmp/artisan.log 2>&1 &
+
+查看进程数量：
+ps -ef | grep 'artisan queue' |grep -v 'grep' | wc -l
+查看详细进程
+ps -fe | grep 'artisan queue'
 ```

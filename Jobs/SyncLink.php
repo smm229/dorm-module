@@ -57,15 +57,16 @@ class SyncLink implements ShouldQueue
      */
     public function handle()
     {
-        Log::error(date('Y-m-d H:i:s') .'开始执行--Synclink--解绑link队列任务');
+        file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') .'开始执行--Synclink--解绑link队列任务'.PHP_EOL,FILE_APPEND);
         try {
             $senselink = new senselink();
-            Log::info($this->attempts());
+            file_put_contents(storage_path('logs/Synclink.log'),'attempts次数'.$this->attempts().PHP_EOL,FILE_APPEND);
             // 如果参试大于三次
             if ($this->attempts() > $this->tries) {
-                Log::error('Synclink--尝试失败次数过多');
+                file_put_contents(storage_path('logs/Synclink.log'),'Synclink--尝试失败次数过多'.PHP_EOL,FILE_APPEND);
                 $this->delete();
             } else {
+                file_put_contents(storage_path('logs/Synclink.log'),'Synclink--删除关联'.PHP_EOL,FILE_APPEND);
                 //查询楼宇绑定的link组
                 $groupid = DormitoryGroup::whereId($this->buildid)->value('groupid');
                 if($this->type==1){ //绑定组
@@ -93,12 +94,12 @@ class SyncLink implements ShouldQueue
                 }
                 sleep(2);//2秒延迟
                 $this->delete();
-                log::info(date('Y-m-d H:i:s') . '队列--Synclink--执行结束');
+                file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') . '队列--Synclink--执行结束'.PHP_EOL,FILE_APPEND);
             }
         }catch(\Exception $exception){
-            //$this->delete();
-            Log::error('队列任务执行失败'."\n".date('Y-m-d H:i:s').','.$exception->getMessage());
-            Log::error('学号 ：'.$this->idnum);
+            $this->delete();
+            file_put_contents(storage_path('logs/Synclink.log'),'队列任务执行失败'."\n".date('Y-m-d H:i:s').','.$exception->getMessage().PHP_EOL,FILE_APPEND);
+            file_put_contents(storage_path('logs/Synclink.log'),'用户linkid ：'.$this->userId.'，楼宇：'.$this->buildid.'，类型：'.$this->type.PHP_EOL,FILE_APPEND);
         }
     }
 }

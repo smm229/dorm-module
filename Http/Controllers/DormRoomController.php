@@ -73,6 +73,10 @@ class DormRoomController extends Controller
      */
     public function add(DormitoryRoomValidate $request){
         try{
+            $build = DormitoryGroup::find($request->buildid);
+            if(!$build || $build->floor<$request->floornum){
+                throw new \Exception('楼宇不存在或楼层错误');
+            }
             if(DormitoryRoom::where([
                 'roomnum'=>$request->roomnum,
                 'floornum'=>$request->floornum,
@@ -120,6 +124,10 @@ class DormRoomController extends Controller
             return showMsg('起始房间号不能大于截止房间号');
         }
         try{
+            $build = DormitoryGroup::find($request->buildid);
+            if(!$build || $build->floor<$request->floornum){
+                throw new \Exception('楼宇不存在或楼层错误');
+            }
             DB::transaction(function () use ($request){
                 for($j=$request->start;$j<=$request->end;$j++) {
                     if (DormitoryRoom::where([
@@ -167,6 +175,10 @@ class DormRoomController extends Controller
     */
     public function edit(DormitoryRoomValidate $request){
         try{
+            $build = DormitoryGroup::find($request->buildid);
+            if(!$build || $build->floor<$request->floornum){
+                throw new \Exception('楼宇不存在或楼层错误');
+            }
             if(!$info = DormitoryRoom::whereId($request->id)->first()){
                 throw new \Exception('信息不存在');
             }

@@ -31,7 +31,7 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
     $api->get('history/access/no_back/export',       'DormHistoryController@no_back_export'); //导出未归记录
     $api->get('history/access/no_record/export',       'DormHistoryController@no_record_export'); //导出多天无记录
 
-    $api->group(['middleware'=>['DormPermission']],function ($api) {
+    $api->group(['middleware'=>['DormPermission']],function ($api) {  //权限管理
         //楼宇
         $api->group(['prefix' => 'buildings'], function ($api) {
             $api->post('list', 'DormController@lists');//宿舍楼宇列表
@@ -108,6 +108,11 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
             $apione->post('getpersonbydevice', 'DeviceController@getPersonByDevice');//编辑设备
         });
     });
-});
 
+    //星云设备
+    $api->group(['prefix'=>'nebula'], function ($api) {
+        $api->post('PersonPackageList', 'NebulaController@PersonPackageList');//人员库列表
+    });
+
+});
 

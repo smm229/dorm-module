@@ -51,10 +51,7 @@ class DormHistoryController extends Controller
             'created_at'        =>    '入住时间',
             'updated_at'        =>    '退宿时间'
         ]];
-        $idnum = auth()->user()->idnum;
-        $buildids = RedisGet('builds-'.$idnum);
-        $data = DormitoryStayrecords::whereIn('buildid',$buildids)
-            ->where(function ($q) use ($request){
+        $data = DormitoryStayrecords::where(function ($q) use ($request){
                 if($request->username) $q->whereUsername($request->username);
                 if($request->idnum) $q->whereIdnum($request->idnum);
             })

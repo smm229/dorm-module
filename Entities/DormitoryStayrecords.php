@@ -6,6 +6,7 @@ use App\Models\Student;
 use App\Traits\SerializeDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Queue;
 use Modules\Dorm\Jobs\SyncLink;
 
 class DormitoryStayrecords extends Model
@@ -26,6 +27,7 @@ class DormitoryStayrecords extends Model
      * @param buildid 原来的宿舍id，调宿用
      */
     public static function record($data,$type,$buildid){
+        file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--执行第二步，增加记录，入参：'.json_encode($data).',type:'.$type.PHP_EOL,FILE_APPEND);
         if($type==3){ //退宿
             self::reverse($data);
         }else{
@@ -35,7 +37,9 @@ class DormitoryStayrecords extends Model
                 $info = self::where('idnum',$data->idnum)->orderBy('id','desc')->first();
                 if($info) self::whereId($info->id)->update(['updated_at'=>date('Y-m-d H:i:s')]);
                 //解除关系
-                SyncLink::dispatch($user->senselink_id,$buildid,2)->delay(3);
+                file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--解除绑定关系，调宿用户id：'.$user->senselink_id.'，到宿舍楼'.$buildid.PHP_EOL,FILE_APPEND);
+                Queue::push(new SyncLink($user->senselink_id,$buildid,2));
+                //SyncLink::dispatch($user->senselink_id,$buildid,2)->delay(3);
             }
             $floornum = DormitoryRoom::whereId($data->roomid)->value('floornum');
             $arr = [
@@ -53,7 +57,13 @@ class DormitoryStayrecords extends Model
             ];
             self::insert($arr);
             //绑定关系
-            SyncLink::dispatch($data->senselink_id,$data->buildid,1)->delay(5);
+            file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--重新分配组关系，调宿用户id：'.$user->senselink_id.'，到宿舍楼'.$buildid.PHP_EOL,FILE_APPEND);
+            if($user->senselink_id){
+                Queue::push(new SyncLink($user->senselink_id,$data->buildid,1));
+                //SyncLink::dispatch($data->senselink_id,$data->buildid,1)->delay(5);
+            }else {
+                file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--分配失败，无senselinkid，调宿用户idnum：' . $user->idnum . '，到宿舍楼' . $buildid . PHP_EOL, FILE_APPEND);
+            }
         }
 
     }
@@ -62,12 +72,18 @@ class DormitoryStayrecords extends Model
      * 批量退宿记录
      */
     public static function reverse($data){
+        file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--执行退宿'.PHP_EOL,FILE_APPEND);
+
         foreach($data as $v){
             $info = self::where('idnum',$v->idnum)->orderBy('id','desc')->first();
             if($info) self::whereId($info->id)->update(['updated_at'=>date('Y-m-d H:i:s')]);
             //解除关系
             $senselink_id = Student::where('idnum',$data->idnum)->value('senselink_id');
-            SyncLink::dispatch($senselink_id,$v->buildid,2);
+            file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--批量解除组关系，退宿用户id：'.$senselink_id.PHP_EOL,FILE_APPEND);
+            if($senselink_id) {
+                Queue::push(new SyncLink($senselink_id, $v->buildid, 2));
+                //SyncLink::dispatch($senselink_id,$v->buildid,2);
+            }
         }
 
     }

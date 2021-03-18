@@ -114,6 +114,10 @@ class DormBedsController extends Controller
         if($beds->idnum){ //有人员住
             return showMsg('请选择其他床位');
         }
+        if(DormitoryBeds::where('idnum',$request->idnum)
+            ->first()){
+            $type = 2;
+        }
         try {
             DB::transaction(function () use ($beds,$request,$type){
                 $buildid = 0;

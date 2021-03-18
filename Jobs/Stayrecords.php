@@ -43,9 +43,9 @@ class Stayrecords implements ShouldQueue
     * 增加住、退宿记录
     * @param type 类型 1分配宿舍，2调宿 ,3退宿
     */
-    public function __construct($beds, $type, $buildid=0)
+    public function __construct($data, $type, $buildid=0)
     {
-        $this->data = $beds;
+        $this->data = $data;
         $this->type = $type;
         $this->buildid = $buildid;
     }
@@ -57,24 +57,24 @@ class Stayrecords implements ShouldQueue
      */
     public function handle()
     {
-        Log::error(date('Y-m-d H:i:s') .'开始执行--Stayrecords--队列任务');
+        file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s').'开始执行--Stayrecords--队列任务,入参data:'.json_encode($this->data).PHP_EOL,FILE_APPEND);
         try {
-            Log::info($this->attempts());
+            file_put_contents(storage_path('logs/stayrecords.log'),'attempts次数'.$this->attempts().PHP_EOL,FILE_APPEND);
             // 如果参试大于三次
             if ($this->attempts() > $this->tries) {
-                Log::error('Stayrecords--尝试失败次数过多');
+                file_put_contents(storage_path('logs/stayrecords.log'),'Stayrecords--尝试失败次数过多'.PHP_EOL,FILE_APPEND);
                 $this->delete();
             } else {
                 //执行住宿记录
                 DormitoryStayrecords::record($this->data,$this->type,$this->buildid);
                 sleep(2);//2秒延迟
                 $this->delete();
-                log::info(date('Y-m-d H:i:s') . '队列--Stayrecords--执行结束');
+                file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--执行结束'.PHP_EOL,FILE_APPEND);
             }
         }catch(\Exception $exception){
-            //$this->delete();
-            Log::error('队列任务执行失败'."\n".date('Y-m-d H:i:s').','.$exception->getMessage());
-            Log::error('数据内容：'.json_encode($this->data));
+            $this->delete();
+            file_put_contents(storage_path('logs/stayrecords.log'),'队列任务执行失败'."\n".date('Y-m-d H:i:s').','.$exception->getMessage().PHP_EOL,FILE_APPEND);
+            file_put_contents(storage_path('logs/stayrecords.log'),'数据内容：'.json_encode($this->data).PHP_EOL,FILE_APPEND);
         }
     }
 

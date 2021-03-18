@@ -55,6 +55,7 @@ class AllocateBuild implements ShouldQueue
     public function handle()
     {
         Log::error(date('Y-m-d H:i:s') .'开始执行--分配宿管楼宇--队列任务');
+        Log::error('数据：'.var_export($this->data));
         try {
             Log::info($this->attempts());
             // 如果参试大于三次
@@ -62,15 +63,15 @@ class AllocateBuild implements ShouldQueue
                 Log::error('AllocateBuild --尝试失败次数过多');
                 $this->delete();
             } else {
-                foreach($this->data as $v) {
-                    if ($v->idnum != 'admin') {
-                        $builds = DormitoryUsersBuilding::where('idnum', $v->idnum)->pluck('buildid')->toArray();
-                        if(RedisGet('builds-' . $v->idnum)){
-                            Redis::del('builds-' . $v->idnum);
+                /*foreach($this->data as $v) {
+                    if ($v['idnum'] != 'admin') {
+                        $builds = DormitoryUsersBuilding::where('idnum', $v['idnum'])->pluck('buildid')->toArray();
+                        if(RedisGet('builds-' . $v['idnum'])){
+                            Redis::del('builds-' . $v['idnum']);
                         }
-                        RedisSet('builds-' . $v->idnum, $builds, 7200);
+                        RedisSet('builds-' . $v['idnum'], $builds, 7200);
                     }
-                }
+                }*/
                 $this->delete();
                 log::info(date('Y-m-d H:i:s') . '队列--分配宿管楼宇--执行结束');
             }
