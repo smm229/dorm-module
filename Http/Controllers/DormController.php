@@ -6,6 +6,7 @@ use App\Exports\Export;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Modules\Dorm\Entities\DormitoryBuildingDevice;
 use Modules\Dorm\Entities\DormitoryCategory;
 use Modules\Dorm\Entities\DormitoryGroup;
@@ -124,7 +125,7 @@ class DormController extends Controller
                     DB::commit();
                     //队列修改管理员所属楼宇
                     if($users) {
-                        AllocateBuild::dispatch($users);
+                        Queue::push(new AllocateBuild($users));
                     }
                     return showMsg('操作成功',200);
                 } else {
@@ -180,7 +181,7 @@ class DormController extends Controller
                  DB::commit();
                  //队列修改管理员所属楼宇
                 if($users) {
-                    AllocateBuild::dispatch($users);
+                    Queue::push(new AllocateBuild($users));
                 }
                  return showMsg('修改成功',200);
             } else {
@@ -188,7 +189,7 @@ class DormController extends Controller
                  return showMsg('修改失败');
             }
         }catch(\Exception $e){
-            return showMsg('添加失败');
+            return showMsg($e->getMessage());
         }
     }
 
@@ -199,12 +200,19 @@ class DormController extends Controller
         if(!$info = DormitoryGroup::whereId($request->id)->first()){
             return showMsg('信息不存在');
         }
-        if(DormitoryUsersBuilding::where('buildid',$request->id)->count()>0 || DormitoryRoom::where('buildid',$request->id)->count()>0){
-            return showMsg('无法删除');
+        if(DormitoryRoom::where('buildid',$request->id)->count()>0){
+            return showMsg('请先删除相关宿舍');
         }
         if (!$info['groupid']) {
-            DormitoryGroup::whereId($request->id)->delete();
-            return showMsg('删除成功',200);
+            try {
+                DB::transaction(function () use ($request) {
+                    DormitoryGroup::whereId($request->id)->delete();
+                    DormitoryUsersBuilding::where('buildid', $request->id)->delete();
+                });
+                return showMsg('删除成功', 200);
+            }catch(\Exception $e){
+                return showMsg($e->getMessage());
+            }
         } else {
             DB::beginTransaction();
             DormitoryGroup::whereId($request->id)->delete();

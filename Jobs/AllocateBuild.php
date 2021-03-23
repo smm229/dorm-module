@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryUsersBuilding;
 
 class AllocateBuild implements ShouldQueue
@@ -54,16 +55,16 @@ class AllocateBuild implements ShouldQueue
      */
     public function handle()
     {
-        Log::error(date('Y-m-d H:i:s') .'开始执行--分配宿管楼宇--队列任务');
-        Log::error('数据：'.var_export($this->data));
+        file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'开始执行--AllocateBuild--分配宿管楼宇队列任务,入参data:'.json_encode($this->data).PHP_EOL,FILE_APPEND);
         try {
             Log::info($this->attempts());
             // 如果参试大于三次
             if ($this->attempts() > $this->tries) {
-                Log::error('AllocateBuild --尝试失败次数过多');
+                file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'AllocateBuild--尝试失败次数过多'.PHP_EOL,FILE_APPEND);
                 $this->delete();
             } else {
-                /*foreach($this->data as $v) {
+                //非管理员
+                foreach($this->data as $v) {
                     if ($v['idnum'] != 'admin') {
                         $builds = DormitoryUsersBuilding::where('idnum', $v['idnum'])->pluck('buildid')->toArray();
                         if(RedisGet('builds-' . $v['idnum'])){
@@ -71,14 +72,19 @@ class AllocateBuild implements ShouldQueue
                         }
                         RedisSet('builds-' . $v['idnum'], $builds, 7200);
                     }
-                }*/
+                }
+                //管理员
+                $abuilds = DormitoryGroup::whereType(1)->pluck('id')->toArray();
+                if(RedisGet('builds-admin')){
+                    Redis::del('builds-admin');
+                }
+                RedisSet('builds-admin', $abuilds, 7200);
                 $this->delete();
-                log::info(date('Y-m-d H:i:s') . '队列--分配宿管楼宇--执行结束');
+                file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'队列--分配宿管楼宇--执行结束'.PHP_EOL,FILE_APPEND);
             }
         }catch(\Exception $exception){
-            //$this->delete();
-            Log::error('AllocateBuild 队列任务执行失败'."\n".date('Y-m-d H:i:s').','.$exception->getMessage());
-            Log::error('数据内容：'.json_encode($this->data));
+            $this->delete();
+            file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'AllocateBuild 队列任务执行失败'."\n".date('Y-m-d H:i:s').','.$exception->getMessage().PHP_EOL,FILE_APPEND);
         }
     }
 }

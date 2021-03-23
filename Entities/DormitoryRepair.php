@@ -17,6 +17,13 @@ class DormitoryRepair extends Model
 
     protected $table = 'dormitory_repair';
 
+    protected $appends = ['build_name'];
+
+    //楼宇名称
+    public function getBuildNameAttribute(){
+        return DormitoryGroup::whereId($this->buildid)->value('title');
+    }
+
     //图集
     public function getCoversAttribute($value){
         $this->attributes['covers'] = json_decode($value,true);

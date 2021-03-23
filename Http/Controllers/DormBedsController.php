@@ -7,6 +7,7 @@ use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Modules\Dorm\Entities\DormitoryBeds;
 use Modules\Dorm\Entities\DormitoryRoom;
 use Modules\Dorm\Entities\DormitoryStayrecords;
@@ -130,7 +131,7 @@ class DormBedsController extends Controller
                 $beds->idnum = $request->idnum;
                 $beds->save();
                 //调宿记录
-                Stayrecords::dispatch($beds,$type,$buildid);
+                Queue::push(new Stayrecords($beds,$type,$buildid));
             });
             Log::info(date('Y-m-d H:i:s').'分配完成');
             return showMsg('分配成功', 200);
@@ -155,7 +156,7 @@ class DormBedsController extends Controller
                 throw new \Exception('删除失败');
             }
             //退宿记录
-            Stayrecords::dispatch($beds,3);
+            Queue::push(new Stayrecords($beds,3));
             return showMsg('删除成功', 200);
         }catch(\Exception $e) {
             return showMsg('删除失败');
