@@ -80,3 +80,5 @@ ps -ef | grep 'artisan queue' |grep -v 'grep' | wc -l
 查看详细进程
 ps -ef | grep 'artisan queue'
 ```
+7、计划任务执行进程重启判断脚本：
+nohup /home/wwwroot/api.hnrtxx_dev/job.sh >/tmp/job.log 2>&1 &
