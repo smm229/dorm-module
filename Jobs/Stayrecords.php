@@ -58,6 +58,10 @@ class Stayrecords implements ShouldQueue
     public function handle()
     {
         file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s').'开始执行--Stayrecords--队列任务,入参data:'.json_encode($this->data).PHP_EOL,FILE_APPEND);
+        if(empty($this->data)){
+            file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') ."参数异常--Synclink--队列中止".PHP_EOL,FILE_APPEND);
+            $this->delete();
+        }
         try {
             file_put_contents(storage_path('logs/stayrecords.log'),'attempts次数'.$this->attempts().PHP_EOL,FILE_APPEND);
             // 如果参试大于三次

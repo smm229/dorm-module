@@ -74,6 +74,7 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
             $api->post('later', 'DormHistoryController@later');//晚归记录
             $api->post('noBack', 'DormHistoryController@noBack');//未归记录
             $api->post('noRecord', 'DormHistoryController@noRecord');//多日无记录
+            $api->post('strange/record',    'DormHistoryController@strange');//陌生人识别记录
 
         });
 

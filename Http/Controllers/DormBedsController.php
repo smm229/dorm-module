@@ -130,6 +130,11 @@ class DormBedsController extends Controller
                 //分配学员
                 $beds->idnum = $request->idnum;
                 $beds->save();
+                //同步宿舍信息到学生中心
+                Student::where('idnum',$request->idnum)->update([
+                    'dorminfo'=>$beds->build_name.$beds->floornum.$beds->room_num.$beds->bednum,
+                    'updated_at'=>date('Y-m-d H:i:s')
+                ]);
                 //调宿记录
                 Queue::push(new Stayrecords($beds,$type,$buildid));
             });
@@ -155,6 +160,11 @@ class DormBedsController extends Controller
             if(!$r){
                 throw new \Exception('删除失败');
             }
+            //同步宿舍信息到学生中心
+            Student::where('idnum',$request->idnum)->update([
+                'dorminfo'=>'',
+                'updated_at'=>date('Y-m-d H:i:s')
+            ]);
             //退宿记录
             Queue::push(new Stayrecords($beds,3));
             return showMsg('删除成功', 200);

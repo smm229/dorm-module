@@ -13,6 +13,7 @@ use Modules\Dorm\Entities\DormitoryAccessRecord;
 use Modules\Dorm\Entities\DormitoryNoBackRecord;
 use Modules\Dorm\Entities\DormitoryNoRecord;
 use Modules\Dorm\Entities\DormitoryStayrecords;
+use Modules\Dorm\Entities\DormitoryStrangeAccessRecord;
 
 //历史记录
 class DormHistoryController extends Controller
@@ -22,12 +23,14 @@ class DormHistoryController extends Controller
      * 住宿历史列表
      * @param username string 姓名
      * @param idnum string 学号
+     * @param grade string 年级
      */
     public function lists(Request $request){
         $pagesize = $request->pageSize ?? 10;
         $list = DormitoryStayrecords::where(function ($q) use ($request){
                 if($request->username) $q->whereUsername($request->username);
                 if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->grade) $q->where('gradeName',$request->grade);
             })
             ->orderBy('id','desc')
             ->paginate($pagesize);
@@ -54,6 +57,7 @@ class DormHistoryController extends Controller
         $data = DormitoryStayrecords::where(function ($q) use ($request){
                 if($request->username) $q->whereUsername($request->username);
                 if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->grade) $q->where('gradeName',$request->grade);
             })
             ->get()->toArray();
         $excel = new Export($data, $header,'住宿历史');
@@ -73,6 +77,7 @@ class DormHistoryController extends Controller
      * @param end_time string 截止时间
      * @param pagesize int 每页数量
      * @param buildid int 楼宇id
+     * @param college_name string 学院名称
      */
     public function student_access(Request $request){
         $type = $request->type ?? 1;
@@ -87,6 +92,7 @@ class DormHistoryController extends Controller
                 if($request->end_time) $q->where('pass_time','<=',$request->end_time);
                 if($request->idnum) $q->whereIdnum($request->idnum);
                 if($request->username) $q->whereUsername($request->username);
+                if($request->college_name) $q->where('college_name',$request->college_name);
             })
             ->orderBy('id','desc')
             ->paginate($pagesize);
@@ -126,6 +132,7 @@ class DormHistoryController extends Controller
                 if($request->end_time) $q->where('pass_time','<=',$request->end_time);
                 if($request->idnum) $q->whereIdnum($request->idnum);
                 if($request->username) $q->whereUsername($request->username);
+                if($request->college_name) $q->where('college_name',$request->college_name);
             })
             ->get()
             ->toArray();
@@ -143,18 +150,21 @@ class DormHistoryController extends Controller
      * @param idnum string  学号
      * @param start_date 开始日期
      * @param end_date 开始日期
+     * @param buildid int 楼宇
+     * @param college_name string 学院名称
      */
     public function later(Request $request){
         $start_date = $request->start_date ?? date('Y-m-d');
         $end_date = $request->end_date ?? date('Y-m-d 23:59:59');
         $idnum = auth()->user()->idnum;
-        $buildids = RedisGet('builds-'.$idnum);
+        $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $pagesize = $request->pageSize ?? 10;
         $list = DormitoryAccessRecord::whereType(1)
             ->whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
                 if($request->username) $q->whereUsername($request->username);
                 if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->college_name) $q->where('college_name',$request->college_name);
             })
             ->whereStatus(1)
             ->whereBetween('pass_time',[$start_date,$end_date])
@@ -173,12 +183,13 @@ class DormHistoryController extends Controller
         $start_date = $request->start_date ?? date('Y-m-d');
         $end_date = $request->end_date ?? date('Y-m-d 23:59:59');
         $idnum = auth()->user()->idnum;
-        $buildids = RedisGet('builds-'.$idnum);
+        $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $data = DormitoryAccessRecord::whereType(1)
             ->whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
                 if($request->username) $q->whereUsername($request->username);
                 if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->college_name) $q->where('college_name',$request->college_name);
             })
             ->whereStatus(1)
             ->whereBetween('pass_time',[$start_date,$end_date])
@@ -218,8 +229,13 @@ class DormHistoryController extends Controller
         $start_date = $request->start_date ?? date('Y-m-d');
         $end_date = $request->end_date ?? date('Y-m-d');
         $idnum = auth()->user()->idnum;
-        $buildids = RedisGet('builds-'.$idnum);
+        $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $list = DormitoryNoBackRecord::whereIn('buildid',$buildids)
+            ->where(function ($q) use ($request){
+                if($request->username) $q->whereUsername($request->username);
+                if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->college_name) $q->where('college_name',$request->college_name);
+            })
             ->whereBetween('date',[$start_date,$end_date])
             ->whereType(1)
             ->paginate($pagesize);
@@ -240,8 +256,13 @@ class DormHistoryController extends Controller
         $start_date = $request->start_date ?? date('Y-m-d');
         $end_date = $request->end_date ?? date('Y-m-d');
         $idnum = auth()->user()->idnum;
-        $buildids = RedisGet('builds-'.$idnum);
+        $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $data = DormitoryNoBackRecord::whereIn('buildid',$buildids)
+            ->where(function ($q) use ($request){
+                if($request->username) $q->whereUsername($request->username);
+                if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->college_name) $q->where('college_name',$request->college_name);
+            })
             ->whereBetween('date',[$start_date,$end_date])
             ->whereType(1)
             ->get()
@@ -278,8 +299,13 @@ class DormHistoryController extends Controller
         $start_date = $request->start_date ?? date('Y-m-d');
         $end_date = $request->end_date ?? date('Y-m-d');
         $idnum = auth()->user()->idnum;
-        $buildids = RedisGet('builds-'.$idnum);
+        $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $list = DormitoryNoRecord::whereIn('buildid',$buildids)
+            ->where(function ($q) use ($request){
+                if($request->username) $q->whereUsername($request->username);
+                if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->college_name) $q->where('college_name',$request->college_name);
+            })
             ->whereBetween('date',[$start_date,$end_date])
             ->whereType(1)
             ->paginate($pagesize);
@@ -294,8 +320,13 @@ class DormHistoryController extends Controller
         $start_date = $request->start_date ?? date('Y-m-d');
         $end_date = $request->end_date ?? date('Y-m-d');
         $idnum = auth()->user()->idnum;
-        $buildids = RedisGet('builds-'.$idnum);
+        $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $data = DormitoryNoRecord::whereIn('buildid',$buildids)
+            ->where(function ($q) use ($request){
+                if($request->username) $q->whereUsername($request->username);
+                if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->college_name) $q->where('college_name',$request->college_name);
+            })
             ->whereBetween('date',[$start_date,$end_date])
             ->whereType(1)
             ->get()
@@ -319,5 +350,23 @@ class DormHistoryController extends Controller
             return showMsg('成功',200,['url'=>$file]);
         }
         return showMsg('下载失败');
+    }
+
+    /**
+     * 陌生人识别记录
+     * @param buildid 宿舍楼
+     * @param start_date 开始日期
+     * @param end_date 开始日期
+     */
+    public function strange(Request $request){
+        $pagesize = $request->pageSize ?? 10;
+        $list = DormitoryStrangeAccessRecord::where(function ($q) use ($request){
+                if($request->buildid) $q->where('buildid',$request->buildid);
+                if($request->start_date) $q->where('pass_time','>=',$request->start_date);
+                if($request->end_date) $q->where('pass_time','>=',$request->end_date.' 23:59:59');
+            })
+            ->orderBy('id','desc')
+            ->paginate($pagesize);
+        return showMsg('成功',200,$list);
     }
 }

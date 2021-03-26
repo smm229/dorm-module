@@ -56,6 +56,10 @@ class AllocateBuild implements ShouldQueue
     public function handle()
     {
         file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'开始执行--AllocateBuild--分配宿管楼宇队列任务,入参data:'.json_encode($this->data).PHP_EOL,FILE_APPEND);
+        if(empty($this->data)){
+            file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s') ."参数异常--Synclink--队列中止".PHP_EOL,FILE_APPEND);
+            $this->delete();
+        }
         try {
             Log::info($this->attempts());
             // 如果参试大于三次

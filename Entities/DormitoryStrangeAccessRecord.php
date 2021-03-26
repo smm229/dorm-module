@@ -15,6 +15,6 @@ class DormitoryStrangeAccessRecord extends Model
 
     protected $table = "dormitory_strange_access_record";
 
-    protected $fillable = [];
+    //protected $fillable = [];
 
 }

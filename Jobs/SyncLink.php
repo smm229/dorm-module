@@ -58,6 +58,10 @@ class SyncLink implements ShouldQueue
     public function handle()
     {
         file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') .'开始执行--Synclink--解绑link队列任务'.PHP_EOL,FILE_APPEND);
+        if(empty($this->userId) || empty($this->buildid)){
+            file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') ."参数异常--Synclink--队列中止，userid:{$this->userId} ,buildid:{$this->buildid}".PHP_EOL,FILE_APPEND);
+            $this->delete();
+        }
         try {
             $senselink = new senselink();
             file_put_contents(storage_path('logs/Synclink.log'),'attempts次数'.$this->attempts().PHP_EOL,FILE_APPEND);
