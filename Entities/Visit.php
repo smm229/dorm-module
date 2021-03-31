@@ -2,6 +2,7 @@
 
 namespace Modules\Dorm\Entities;
 
+use App\Models\Teacher;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -11,10 +12,16 @@ class Visit extends Model
 
     protected $fillable = [];
     protected $table = 'dormitory_guest';
-    protected $appends = ['visitplacename'];
+    protected $appends = ['visitplacename', 'sex_name', 'receptionusername'];
     protected static function newFactory()
     {
         return \Modules\Dorm\Database\factories\VisitFactory::new();
+    }
+
+    public function getSexNameAttribute()
+    {
+        $sex = ['1'=>'男', '2'=>'女', '3' => '保密'];
+        return $this->sex ? $sex[$this->sex] : '保密';
     }
 
     public function getvisitplacenameAttribute()
@@ -23,4 +30,11 @@ class Visit extends Model
         $buildName = DormitoryGroup::whereIn('id', $this->visit_place)->pluck('title')->toArray();
         return implode(',', $buildName);
     }
+
+    public function getreceptionusernameAttribute()
+    {
+         return Teacher::where('senselink_id', $this->receptionUserId)->value('username');
+    }
+
+
 }

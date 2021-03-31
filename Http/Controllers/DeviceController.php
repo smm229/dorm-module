@@ -75,9 +75,9 @@ class DeviceController extends Controller
         $res = $result['data']['data'];
         $buildname = '';
         //获取设备所在楼栋
-        $groupid = DB::table('dormitory_building_device')->where('deviceid', $request['id'])->value('groupid');
+        $groupid = DB::table('dormitory_building_device')->where('deviceid', $request['id'])->where('grouptype', 1)->value('groupid');
         if ($groupid) {
-            $buildname = DormitoryGroup::where('id', $groupid)->value('title');
+            $buildname = DormitoryGroup::where('groupid', $groupid)->value('title');
         }
         $resArr = [];
         foreach ($res as $v) {

@@ -2,6 +2,8 @@
 
 namespace Modules\Dorm\Http\Controllers;
 
+use App\Models\Student;
+use App\Models\Teacher;
 use Dingo\Api\Routing\Helpers;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
@@ -28,6 +30,7 @@ class VisitController extends Controller
      */
     public function create(VisitValidate $request)
     {
+
         $visit_place = explode(',', $request['visit_place']);
         $groups = DB::table('dormitory_group')->whereIn('id', $visit_place)->pluck('visitor_groupid')->toArray();
         $groups = implode(',', $groups);
@@ -37,10 +40,21 @@ class VisitController extends Controller
         if (strtolower($imagetype) == 'jpg') {
             $imagetype = 'jpeg';
         }
-        $receptionUserId = is_null($request['receptionUserId']) ? 157:$request['receptionUserId'];
+        $receptionUserId = is_null($request['receptionUserId']) ? 65497088:$request['receptionUserId'];
         $headimg['imgtype'] = 'image/'.$imagetype;
         $result_link = $this->senselink->linkguest_add($request['username'], $receptionUserId, $headimg, $request['begin_time'], $request['end_time'], $groups);
         if ($result_link['message'] == 'Similar User Exist') {
+            //如果link判断人员已存在，则先判断人员步骤如下：1 黑名单（暂时忽略） 2 学生 教职工 3 已存在的访客
+
+            //2.判断学生or教师
+            $stuInfo = Student::where('senselink_id', $result_link['data']['similar_user_id'])->exists();
+            if ($stuInfo == true) {
+                return $this->response->error('此人员为校内学生, 无法添加为访客',201);
+            }
+            $teacherInfo = Teacher::where('senselink_id', $result_link['data']['similar_user_id'])->exists();
+            if ($teacherInfo == true) {
+                return $this->response->error('此人员为校内教职工, 无法添加为访客',201);
+            }
             $perInfo = Visit::where('link_id', $result_link['data']['similar_user_id'])->get()->toArray();
             if (!$perInfo) {
                 $result_links = $this->senselink->linkguest_del($result_link['data']['similar_user_id']);
@@ -100,17 +114,39 @@ class VisitController extends Controller
         if (strtolower($imagetype) == 'jpg') {
             $imagetype = 'jpeg';
         }
-        $receptionUserId = is_null($request['receptionUserId']) ? 157:$request['receptionUserId'];
+        $receptionUserId = is_null($request['receptionUserId']) ? 65497088:$request['receptionUserId'];
         $headimg['imgtype'] = 'image/'.$imagetype;
         $result_link = $this->senselink->linkguest_edit($perInfo[0]['link_id'], $request['username'], $receptionUserId, $headimg, $request['begin_time'], $request['end_time'], $groups);
+        if ($result_link['message'] == 'Similar User Exist') {
+            //如果link判断人员已存在，则先判断人员步骤如下：1 黑名单（暂时忽略） 2 学生 教职工 3 已存在的访客
+
+            //2.判断学生or教师
+            $stuInfo = Student::where('senselink_id', $result_link['data']['similar_user_id'])->exists();
+            if ($stuInfo == true) {
+                return $this->response->error('此人员为校内学生, 无法添加为访客',201);
+            }
+            $teacherInfo = Teacher::where('senselink_id', $result_link['data']['similar_user_id'])->exists();
+            if ($teacherInfo == true) {
+                return $this->response->error('此人员为校内教职工, 无法添加为访客',201);
+            }
+            $perInfo = Visit::where('link_id', $result_link['data']['similar_user_id'])->get()->toArray();
+            if (!$perInfo) {
+                $result_links = $this->senselink->linkguest_del($result_link['data']['similar_user_id']);
+                if ($result_links['code'] == 200) {
+                    $result_link = $this->senselink->linkguest_edit($perInfo[0]['link_id'], $request['username'], $receptionUserId, $headimg, $request['begin_time'], $request['end_time'], $groups);
+                }
+            } else {
+                return $this->response->array(['status_code' => 200, 'message'=> '访客已存在，请重新编辑', 'data' => $perInfo]);
+            }
+        }
         if ($result_link['code'] == 200 && isset($result_link['code'])) {
             $addArr = [
-                'username'    => $request['username'],
-                'headimg'     => $request['headimg'],
-                'sex'         => $request['sex'],
-                'begin_time'  => $request['begin_time'],
-                'end_time'    => $request['end_time'],
-                'visit_place' => $request['visit_place'],
+                'username'        => $request['username'],
+                'headimg'         => $request['headimg'],
+                'sex'             => $request['sex'],
+                'begin_time'      => $request['begin_time'],
+                'end_time'        => $request['end_time'],
+                'visit_place'     => $request['visit_place'],
                 'receptionUserId' => $receptionUserId
             ];
             if ($request['mobile']) {

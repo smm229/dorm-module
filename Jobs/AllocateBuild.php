@@ -90,7 +90,10 @@ class AllocateBuild implements ShouldQueue
 
                 //添加宿管老师到组
                 $senselink = new senselink();
-                $groupid = DormitoryGroup::where('id', $this->buildid)->value('groupid');//楼宇的组
+                $group = DormitoryGroup::where('id', $this->buildid)->first();//楼宇的组
+                $groupid = $group->groupid;
+                $visitor_groupid = $group->visitor_groupid;//访客组
+                $blacklist_groupid = $group->blacklist_groupid;//黑名单组
                 //删除之前的老师关系
                 if($this->teacherids){
                     file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--开始删除老师与用户组关系，数据：'.json_encode($this->teacherids).PHP_EOL,FILE_APPEND);
@@ -101,6 +104,10 @@ class AllocateBuild implements ShouldQueue
                     }else{
                         file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--删除老师到用户组失败,link数据：'.json_encode($res_link).PHP_EOL,FILE_APPEND);
                     }
+                    $visitor_link = $senselink->person_delgroup($linkids, $visitor_groupid);
+                    file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--删除老师到访客组返回link数据：'.json_encode($visitor_link).PHP_EOL,FILE_APPEND);
+                    $black_link = $senselink->person_delgroup($linkids, $blacklist_groupid);
+                    file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--删除老师到黑名单组返回link数据：'.json_encode($black_link).PHP_EOL,FILE_APPEND);
                 }
                 $newidnums = array_column($this->data, 'idnum');//取出idnum集合
                 file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--开始绑定老师与用户组关系，数据：'.json_encode($newidnums).PHP_EOL,FILE_APPEND);
@@ -111,6 +118,10 @@ class AllocateBuild implements ShouldQueue
                 }else{
                     file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--分配老师到用户组失败,link数据：'.json_encode($result_link).PHP_EOL,FILE_APPEND);
                 }
+                $visitor_link = $senselink->linkperson_addgroup($newlinkids, $visitor_groupid);
+                file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--分配老师到访客组返回link数据：'.json_encode($visitor_link).PHP_EOL,FILE_APPEND);
+                $black_link = $senselink->linkperson_addgroup($newlinkids, $blacklist_groupid);
+                file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--分配老师到黑名单组返回link数据：'.json_encode($black_link).PHP_EOL,FILE_APPEND);
                 $this->delete();
                 file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'队列--分配宿管楼宇--执行结束'.PHP_EOL,FILE_APPEND);
             }

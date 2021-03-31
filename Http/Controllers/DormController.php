@@ -136,7 +136,7 @@ class DormController extends Controller
                     DB::commit();
                     //队列修改管理员所属楼宇
                     if($users) {
-                        Queue::push(new AllocateBuild($users));
+                        Queue::push(new AllocateBuild($users,$buildid));
                     }
                     return showMsg('操作成功',200);
                 } else {
