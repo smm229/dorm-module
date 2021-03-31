@@ -224,6 +224,10 @@ class DormRoomController extends Controller
         if(!DormitoryRoom::whereId($request->id)->first()){
             return showMsg('信息不存在');
         }
+        //是否有人居住
+        if(DormitoryBeds::where('roomid',$request->id)->whereNotNull('idnum')->first()){
+            return showMsg('宿舍有人居住，禁止删除');
+        }
         try{
             DB::transaction(function () use ($request){
                 //删除宿舍

@@ -120,25 +120,26 @@ class DormBedsController extends Controller
             $type = 2;
         }
         try {
+            $buildid = 0;
+            if($type==2){ //调宿
+                $buildid = DormitoryBeds::where('idnum',$request->idnum)->value('buildid');
+            }
             DB::transaction(function () use ($beds,$request,$type){
-                $buildid = 0;
                 if($type==2){ //调宿
                     //删除原来的宿舍分配
-                    $buildid = DormitoryBeds::where('idnum',$request->idnum)->value('buildid');
                     DormitoryBeds::where('idnum',$request->idnum)->update(['is_in'=>0,'idnum'=>null]);
                 }
                 //分配学员
-                $beds->idnum = $request->idnum;
-                $beds->save();
+                DormitoryBeds::whereId($request->bedsid)->update(['idnum'=>$request->idnum,'is_in'=>2]);
                 //同步宿舍信息到学生中心
                 Student::where('idnum',$request->idnum)->update([
                     'dorminfo'=>$beds->build_name.$beds->floornum.$beds->room_num.$beds->bednum,
                     'updated_at'=>date('Y-m-d H:i:s')
                 ]);
-                //调宿记录
-                Queue::push(new Stayrecords($beds,$type,$buildid));
             });
-            Log::info(date('Y-m-d H:i:s').'分配完成');
+            //调宿记录
+            $beds = DormitoryBeds::find($request->bedsid);
+            Queue::push(new Stayrecords($beds,$type,$buildid));
             return showMsg('分配成功', 200);
         }catch(\Exception $e){
             return showMsg('分配失败');
@@ -151,25 +152,25 @@ class DormBedsController extends Controller
     public function del(Request $request){
         try {
             $bedids = is_array($request->bedsid) ? $request->bedsid : (array)$request->bedsid;
-            $beds = DormitoryBeds::whereIn('id',$bedids)->get();
+            $beds = DormitoryBeds::whereIn('id',$bedids)->get()->toArray();
+            $idnums = DormitoryBeds::whereIn('id',$bedids)->pluck('idnum')->toArray();
             if(!$beds){
                 throw new \Exception('数据格式错误');
             }
-            $r=DormitoryBeds::whereIn('id', $request->bedsid)->update(['is_in'=>0,'idnum' => null]);
-
-            if(!$r){
-                throw new \Exception('删除失败');
+            if(DormitoryBeds::whereIn('id', $bedids)->update(['is_in'=>0,'idnum' => null])){
+                //同步宿舍信息到学生中心
+                Student::whereIn('idnum',$idnums)->update([
+                    'dorminfo'=>'',
+                    'updated_at'=>date('Y-m-d H:i:s')
+                ]);
+                file_put_contents(storage_path('logs/stayrecords.log'),'Stayrecords--准备分配数据'.json_encode($beds).PHP_EOL,FILE_APPEND);
+                //退宿记录
+                Queue::push(new Stayrecords($beds,3,0));
+                return showMsg('删除成功', 200);
             }
-            //同步宿舍信息到学生中心
-            Student::where('idnum',$request->idnum)->update([
-                'dorminfo'=>'',
-                'updated_at'=>date('Y-m-d H:i:s')
-            ]);
-            //退宿记录
-            Queue::push(new Stayrecords($beds,3));
-            return showMsg('删除成功', 200);
+            return showMsg('删除失败', 201);
         }catch(\Exception $e) {
-            return showMsg('删除失败');
+            return showMsg('删除失败'.$e->getMessage());
         }
     }
 

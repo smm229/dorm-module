@@ -15,6 +15,7 @@ class CreateDormitoryUsersGroupTable extends Migration
     {
         Schema::create('dormitory_users_group', function (Blueprint $table) {
             $table->increments('id');
+            $table->unsignedTinyInteger('type')->default(1)->comment('类型1学生2老师3访客4黑名单');
             $table->integer('senselink_id')->comment('senselink用户id');
             $table->integer('groupid')->comment('senselink组id');
             $table->timestamp('created_at')->nullable()->useCurrent()->comment('创建时间');

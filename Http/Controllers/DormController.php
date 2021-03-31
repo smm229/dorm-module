@@ -3,9 +3,11 @@
 namespace Modules\Dorm\Http\Controllers;
 
 use App\Exports\Export;
+use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Modules\Dorm\Entities\DormitoryBuildingDevice;
 use Modules\Dorm\Entities\DormitoryCategory;
@@ -79,8 +81,7 @@ class DormController extends Controller
             ->whereIn('id',$buildids)
             ->with(['dormitory_users' => function ($q) {
                 $q->select('dormitory_users.id', 'dormitory_users.username', 'dormitory_users.idnum');
-            }])
-            ->paginate($pagesize);
+            }])->orderBy('id', 'desc')->paginate($pagesize);
 
         return showMsg('获取成功',200,$list);
     }
@@ -114,12 +115,22 @@ class DormController extends Controller
                 }, $build);
                 DormitoryUsersBuilding::insert($users);
             }
-            //如果添加成功，添加link
+            //如果添加成功，添加link到员工组，访客组，黑名单组
             if ($buildid) {
+                //添加员工组
                 $res = $this->senselink->linkgroup_add($request->title, 1);
-                if (isset($res['data']) && isset($res['data']['id'])) {
+
+                //添加访客组
+                $visitorRes = $this->senselink->linkgroup_add($request->title, 2);
+
+                //添加黑名单组
+                $blacklistRes = $this->senselink->linkgroup_add($request->title, 5);
+
+                if (isset($res['data']) && isset($res['data']['id']) && isset($visitorRes['data']['id'])  && isset($visitorRes['data']) && isset($blacklistRes['data']['id']) && isset($blacklistRes['data'])) {
                     $upArr = [
-                        'groupid' => $res['data']['id'],
+                        'groupid'           => $res['data']['id'],
+                        'visitor_groupid'   => $visitorRes['data']['id'],
+                        'blacklist_groupid' => $blacklistRes['data']['id'],
                     ];
                     DormitoryGroup::where('id', $buildid)->update($upArr);
                     DB::commit();
@@ -132,6 +143,9 @@ class DormController extends Controller
                     DB::rollBack();
                     return showMsg('添加失败');
                 }
+            }else{
+                DB::rollBack();
+                return showMsg('添加失败');
             }
         }catch(\Exception $e) {
             return showMsg('添加失败');
@@ -148,7 +162,7 @@ class DormController extends Controller
     * @param teachers 宿管老师idnum集合
     */
     public function edit(DormitoryBuildingsValidate $request){
-         try{
+        try{
             if(!$info = DormitoryGroup::whereId($request->id)->first()){
                 throw new \Exception('信息不存在');
             }
@@ -165,8 +179,10 @@ class DormController extends Controller
             $info->floor         =  $request->floor;
             $info->save();
             $users = [];
+            $build = ['buildid'=>$info->id];
+            $teacherids = DormitoryUsersBuilding::where($build)->pluck('idnum')->toArray();
+
             if ($request->teachers) {
-                $build = ['buildid'=>$info->id];
                 DormitoryUsersBuilding::where($build)->delete();
                 $users = explode(',',$request->teachers);
                 //宿管关联表
@@ -175,13 +191,18 @@ class DormController extends Controller
                 }, $build);
                 DormitoryUsersBuilding::insert($users);
             }
-            //更新link的信息
-            $res = $this->senselink->linkgroup_edit($request->title, $info['groupid']);
-            if (isset($res['data']) && isset($res['data']['id'])) {
+            //更新link的组的信息
+            $res           = $this->senselink->linkgroup_edit($request->title, $info['groupid']);
+            Log::error('正常组编辑',$res);
+            $visitorRes    = $this->senselink->linkgroup_edit($request->title, $info['visitor_groupid']);
+            Log::error('访客组编辑',$visitorRes);
+            $blacklistRes  = $this->senselink->linkgroup_edit($request->title, $info['blacklist_groupid']);
+            Log::error('黑名单组编辑',$blacklistRes);
+            if (isset($res['data']) && isset($res['data']['id']) && isset($visitorRes['data']['id'])  && isset($visitorRes['data']) && isset($blacklistRes['data']['id']) && isset($blacklistRes['data'])) {
                  DB::commit();
                  //队列修改管理员所属楼宇
                 if($users) {
-                    Queue::push(new AllocateBuild($users));
+                    Queue::push(new AllocateBuild($users,$info->id,$teacherids));
                 }
                  return showMsg('修改成功',200);
             } else {
@@ -203,21 +224,23 @@ class DormController extends Controller
         if(DormitoryRoom::where('buildid',$request->id)->count()>0){
             return showMsg('请先删除相关宿舍');
         }
-        if (!$info['groupid']) {
-            try {
-                DB::transaction(function () use ($request) {
-                    DormitoryGroup::whereId($request->id)->delete();
-                    DormitoryUsersBuilding::where('buildid', $request->id)->delete();
-                });
-                return showMsg('删除成功', 200);
-            }catch(\Exception $e){
-                return showMsg($e->getMessage());
-            }
-        } else {
+        try{
             DB::beginTransaction();
             DormitoryGroup::whereId($request->id)->delete();
+            DormitoryUsersBuilding::where('buildid', $request->id)->delete();
+            //用户组
+            DormitoryBuildingDevice::where('groupid', $info['groupid'])->delete();
+            //访客组
+            DormitoryBuildingDevice::where('groupid',$info['visitor_groupid'])->delete();
+            //黑名单组
+            DormitoryBuildingDevice::where('groupid',$info['blacklist_groupid'])->delete();
             //删除link上的组
             $res = $this->senselink->linkgroup_del($info['groupid']);
+            file_put_contents(storage_path('logs/del_group.log'),$info->id.'删除用户组'.json_encode($res).PHP_EOL,FILE_APPEND);
+            $visitor = $this->senselink->linkgroup_del($info['visitor_groupid']);
+            file_put_contents(storage_path('logs/del_group.log'),$info->id.'删除访客组'.json_encode($visitor).PHP_EOL,FILE_APPEND);
+            $black = $this->senselink->linkgroup_del($info['blacklist_groupid']);
+            file_put_contents(storage_path('logs/del_group.log'),$info->id.'删除黑名单组'.json_encode($black).PHP_EOL,FILE_APPEND);
             if (isset($res['code']) && $res['code'] == 200) {
                 DB::commit();
                 return showMsg('删除成功',200);
@@ -225,6 +248,8 @@ class DormController extends Controller
                 DB::rollBack();
                 return showMsg('删除失败');
             }
+        }catch(\Exception $e){
+            return showMsg($e->getMessage());
         }
     }
 

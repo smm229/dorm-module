@@ -18,7 +18,7 @@ class CreateDormitoryBedsTable extends Migration
             $table->Integer('buildid')->comment('楼宇id');
             $table->Integer('roomid')->comment('房间id');
             $table->string('room_num')->comment('房间号');
-            $table->tinyInteger('is_in')->default(0)->comment('是否在宿舍1在0不在');
+            $table->tinyInteger('is_in')->default(0)->comment('是否在宿舍0未住人1在2不在');
             $table->string('bednum')->comment('床位号');
             $table->string('idnum')->nullable()->comment('床位的所属人编号');
             $table->timestamp('created_at')->nullable()->useCurrent()->comment('创建时间');

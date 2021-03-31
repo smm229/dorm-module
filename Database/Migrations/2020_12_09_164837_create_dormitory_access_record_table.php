@@ -24,6 +24,10 @@ class CreateDormitoryAccessRecordTable extends Migration
             $table->string('major_name', 50)->nullable()->comment('专业');
             $table->string('grade_name', 50)->nullable()->comment('年级');
             $table->string('class_name', 50)->nullable()->comment('班级');
+            $table->string('build_name', 50)->nullable()->comment('宿舍楼');
+            $table->string('floor', 50)->nullable()->comment('楼层');
+            $table->string('room_num', 50)->nullable()->comment('房间号');
+            $table->string('bed_num', 50)->nullable()->comment('床位');
             $table->string('pass_location')->comment('通行地点');
             $table->string('pass_way')->comment('通道名称');
             $table->string('direction', 50)->nullable()->comment('方向');

@@ -108,6 +108,14 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
             $apione->post('edit', 'DeviceController@edit');//编辑设备
             $apione->post('getpersonbydevice', 'DeviceController@getPersonByDevice');//编辑设备
         });
+
+        //访客相关
+        $api->group(['prefix' => 'visit'], function ($apione) {
+            $apione->post('add',  'VisitController@create');//添加访客
+            $apione->post('edit', 'VisitController@edit');//编辑访客
+            $apione->post('del',  'VisitController@del');//删除访客
+            $apione->get('list',  'VisitController@lists');//访客列表
+        });
     });
 
     //星云设备

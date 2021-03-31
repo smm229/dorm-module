@@ -2,6 +2,8 @@
 
 namespace Modules\Dorm\Jobs;
 
+use senselink;
+use App\Models\Teacher;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
@@ -37,15 +39,17 @@ class AllocateBuild implements ShouldQueue
      */
     public $timeout = 120;
 
-    private $data;
+    private $data,$buildid,$teacherids;
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct($data)
+    public function __construct($data,$buildid='',$teacherids='')
     {
         $this->data = $data;
+        $this->buildid = $buildid;
+        $this->teacherids = $teacherids;
     }
 
     /**
@@ -83,6 +87,30 @@ class AllocateBuild implements ShouldQueue
                     Redis::del('builds-admin');
                 }
                 RedisSet('builds-admin', $abuilds, 7200);
+
+                //添加宿管老师到组
+                $senselink = new senselink();
+                $groupid = DormitoryGroup::where('id', $this->buildid)->value('groupid');//楼宇的组
+                //删除之前的老师关系
+                if($this->teacherids){
+                    file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--开始删除老师与用户组关系，数据：'.json_encode($this->teacherids).PHP_EOL,FILE_APPEND);
+                    $linkids = Teacher::whereIn('idnum',$this->teacherids)->whereNotNull('senselink_id')->pluck('senselink_id')->toArray();//教师对应的linkid
+                    $res_link = $senselink->person_delgroup($linkids, $groupid);
+                    if (isset($res_link['code']) && $res_link['code'] == 200) {
+                        file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--删除老师到用户组成功,idnums：'.json_encode($linkids).PHP_EOL,FILE_APPEND);
+                    }else{
+                        file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--删除老师到用户组失败,link数据：'.json_encode($res_link).PHP_EOL,FILE_APPEND);
+                    }
+                }
+                $newidnums = array_column($this->data, 'idnum');//取出idnum集合
+                file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--开始绑定老师与用户组关系，数据：'.json_encode($newidnums).PHP_EOL,FILE_APPEND);
+                $newlinkids = Teacher::whereIn('idnum',$newidnums)->whereNotNull('senselink_id')->pluck('senselink_id')->toArray();//教师对应的linkid
+                $result_link = $senselink->linkperson_addgroup($newlinkids, $groupid);
+                if (isset($result_link['code']) && $result_link['code'] == 200) {
+                    file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--分配老师到用户组成功,idnums：'.json_encode($newidnums).PHP_EOL,FILE_APPEND);
+                }else{
+                    file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'分配宿管楼宇--分配老师到用户组失败,link数据：'.json_encode($result_link).PHP_EOL,FILE_APPEND);
+                }
                 $this->delete();
                 file_put_contents(storage_path('logs/AllocateBuild.log'),date('Y-m-d H:i:s').'队列--分配宿管楼宇--执行结束'.PHP_EOL,FILE_APPEND);
             }

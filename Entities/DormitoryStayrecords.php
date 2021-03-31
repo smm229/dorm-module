@@ -57,7 +57,7 @@ class DormitoryStayrecords extends Model
             ];
             self::insert($arr);
             //绑定关系
-            file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--重新分配组关系，调宿用户id：'.$user->senselink_id.'，到宿舍楼'.$buildid.PHP_EOL,FILE_APPEND);
+            file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--重新分配组关系，调宿用户id：'.$user->senselink_id.'，到宿舍楼'.$data->buildid.PHP_EOL,FILE_APPEND);
             if($user->senselink_id){
                 Queue::push(new SyncLink($user->senselink_id,$data->buildid,1));
                 //SyncLink::dispatch($data->senselink_id,$data->buildid,1)->delay(5);
@@ -70,19 +70,24 @@ class DormitoryStayrecords extends Model
 
     /*
      * 批量退宿记录
+     * @param array data
      */
     public static function reverse($data){
-        file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--执行退宿'.PHP_EOL,FILE_APPEND);
+        file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--执行退宿,数据：'.json_encode($data).PHP_EOL,FILE_APPEND);
 
         foreach($data as $v){
-            $info = self::where('idnum',$v->idnum)->orderBy('id','desc')->first();
-            if($info) self::whereId($info->id)->update(['updated_at'=>date('Y-m-d H:i:s')]);
-            //解除关系
-            $senselink_id = Student::where('idnum',$data->idnum)->value('senselink_id');
-            file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--批量解除组关系，退宿用户id：'.$senselink_id.PHP_EOL,FILE_APPEND);
-            if($senselink_id) {
-                Queue::push(new SyncLink($senselink_id, $v->buildid, 2));
-                //SyncLink::dispatch($senselink_id,$v->buildid,2);
+            try {
+                $info = self::where('idnum', $v['idnum'])->orderBy('id', 'desc')->first();
+                if ($info) self::whereId($info->id)->update(['updated_at' => date('Y-m-d H:i:s')]);
+                //解除关系
+                $senselink_id = Student::where('idnum', $v['idnum'])->value('senselink_id');
+                file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--批量解除组关系，退宿用户id：' . $senselink_id . PHP_EOL, FILE_APPEND);
+                if ($senselink_id) {
+                    Queue::push(new SyncLink($senselink_id, $v['buildid'], 2));
+                    //SyncLink::dispatch($senselink_id,$v->buildid,2);
+                }
+            }catch(\Exception $e){
+                file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--批量退宿解除关系失败用户学号：'.$v['idnum']  . PHP_EOL, FILE_APPEND);
             }
         }
 

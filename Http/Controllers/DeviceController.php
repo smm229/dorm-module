@@ -40,7 +40,8 @@ class DeviceController extends Controller
         $ids = '';
         //取出楼宇下的设备
         if (!empty($request['buildid'])) {
-            $deviceids = DB::table('dormitory_building_device')->where('groupid', $request['buildid'])->pluck('deviceid')->toArray() ;
+            $groupId = DormitoryGroup::where('id', $request['buildid'])->value('groupid');
+            $deviceids = DB::table('dormitory_building_device')->where('groupid', $groupId)->pluck('deviceid')->toArray() ;
             if (!$deviceids) { //无设备
                 return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => []]);
             }
@@ -109,36 +110,44 @@ class DeviceController extends Controller
         if (!$request['id']) {
             return $this->response->error('参数错误',201);
         }
-        //因为设备默认要有员工，访客，黑名单的组，所以要加上123
-        $groupid = [$request['groupid'], 1, 2, 3];
-        $result = $this->senselink->linkdevice_edit($request['id'], $request['name'], $request['location'], $request['direction'], $groupid);
-        if ($result['code'] != 200 || false == $result['code']) {
-            return $this->response->error('编辑数据失败',201);
+        if (!$request['groupid']) {
+            return $this->response->error('请选择要分配楼宇',201);
         }
-        //设备绑定员工组，要生成记录
-        if ($request['groupid']) {
-            try {
+        //因为设备默认要有员工，访客，黑名单的组
+        $groupArr = DormitoryGroup::where('id', $request['groupid'])->get(['groupid', 'visitor_groupid', 'blacklist_groupid'])->toArray();
+        if ($groupArr && $groupArr[0]['groupid'] && $groupArr[0]['visitor_groupid'] && $groupArr[0]['blacklist_groupid']) {
                 DB::beginTransaction();
                 //删除设备的绑定关系
                 $delRes = DormitoryBuildingDevice::where('deviceid', $request['id'])->delete();
-                $insert = [
-                    'deviceid' => $request['id'],
-                    'groupid'  => $request['groupid'],
+                $insert[] = [
+                    'deviceid'     => $request['id'],
+                    'groupid'      => $groupArr[0]['groupid'],
+                    'senselink_sn' => $request['senselink_sn'],
+                    'grouptype'    => 1
                 ];
-                $insertRes = DormitoryBuildingDevice::insertGetId($insert);
-                if ($insertRes) {
-                    DB::commit();
-                } else {
-                    DB::rollBack();
-                    return $this->response->error('编辑数据失败',201);
-                }
-            } catch (\Exception $exception) {
-                return $this->response->error('编辑数据失败',201);
+                $insert[] = [
+                    'deviceid'     => $request['id'],
+                    'groupid'      => $groupArr[0]['visitor_groupid'],
+                    'senselink_sn' => $request['senselink_sn'],
+                    'grouptype'    => 2
+                ];
+                $insert[] = [
+                    'deviceid'     => $request['id'],
+                    'groupid'      => $groupArr[0]['blacklist_groupid'],
+                    'senselink_sn' => $request['senselink_sn'],
+                    'grouptype'    => 5
+                ];
+                $insertRes = DormitoryBuildingDevice::insert($insert);
+                $result = $this->senselink->linkdevice_edit($request['id'], $request['name'], $request['location'], $request['direction'], $groupArr[0]['groupid'], $groupArr[0]['visitor_groupid'], $groupArr[0]['blacklist_groupid']);
+            if ($result['code'] == 200 && $result['message'] == 'OK') {
+                DB::commit();
+                return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $result]);
+            }  else {
+                DB::rollBack();
+                return $this->response->error('分配失败，请联系管理员',201);
             }
-
         }
-        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $result]);
-
+        return $this->response->error('分配失败，请联系管理员',201);
     }
 
     /**
@@ -156,7 +165,7 @@ class DeviceController extends Controller
         DB::beginTransaction();
         $delRes = DormitoryBuildingDevice::where('deviceid', $request['id'])->delete();
         $result = $this->senselink->linkdevice_del($request['id']);
-        if ($result['code'] == 200) {
+        if ($result['code'] == 200 && $result['message'] != 'OK') {
             DB::commit();
         } else {
             DB::rollBack();

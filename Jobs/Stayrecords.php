@@ -77,7 +77,7 @@ class Stayrecords implements ShouldQueue
             }
         }catch(\Exception $exception){
             $this->delete();
-            file_put_contents(storage_path('logs/stayrecords.log'),'队列任务执行失败'."\n".date('Y-m-d H:i:s').','.$exception->getMessage().PHP_EOL,FILE_APPEND);
+            file_put_contents(storage_path('logs/stayrecords.log'),'队列任务执行失败'.$exception->getFile().$exception->getLine().$exception->getMessage().PHP_EOL,FILE_APPEND);
             file_put_contents(storage_path('logs/stayrecords.log'),'数据内容：'.json_encode($this->data).PHP_EOL,FILE_APPEND);
         }
     }

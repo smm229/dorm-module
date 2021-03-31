@@ -57,7 +57,7 @@ class SyncLink implements ShouldQueue
      */
     public function handle()
     {
-        file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') .'开始执行--Synclink--解绑link队列任务'.PHP_EOL,FILE_APPEND);
+        file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') ."开始执行--Synclink--解绑link队列任务，type:{$this->type},userid:{$this->userId} ,buildid:{$this->buildid}".PHP_EOL,FILE_APPEND);
         if(empty($this->userId) || empty($this->buildid)){
             file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') ."参数异常--Synclink--队列中止，userid:{$this->userId} ,buildid:{$this->buildid}".PHP_EOL,FILE_APPEND);
             $this->delete();
@@ -79,7 +79,8 @@ class SyncLink implements ShouldQueue
                         DormitoryUsersGroup::insert(['groupid'=>$groupid,'senselink_id'=>$this->userId]);
                     }
                     //同步添加到link
-                    $senselink->linkperson_edit($this->userId,'','',$groupid);
+                    $re = $senselink->linkperson_addgroup($this->userId,$groupid);
+                    file_put_contents(storage_path('logs/Synclink.log'),'Synclink--同步修改用户组返回数据：'.json_encode($re).PHP_EOL,FILE_APPEND);
                 }else{ //解绑
                     if(DormitoryUsersGroup::where(['groupid'=>$groupid,'senselink_id'=>$this->userId])->first()){
                         //删除关联组
@@ -88,7 +89,8 @@ class SyncLink implements ShouldQueue
                     $i = 0;
                     sync_del_link:
                     //同步删除link关联
-                    $res = $senselink->user_group_del($this->userId,$groupid);
+                    $res = $senselink->person_delgroup($this->userId,$groupid);
+                    file_put_contents(storage_path('logs/Synclink.log'),'Synclink--同步删除用户组返回数据：'.json_encode($res).PHP_EOL,FILE_APPEND);
                     if($res['code']!=200){//删除失败，重复执行
                         $i++;
                         if($i<3){

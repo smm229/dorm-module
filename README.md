@@ -74,7 +74,10 @@ php artisan queue:work --daemon &
 nohup php artisan queue:listen >/dev/null 2>&1 &
 或者（我用的这个）
 nohup php artisan queue:work --daemon >/dev/null 2>&1 &
-
+刷新队列
+php artisan queue:flush
+重新运行队列
+php artisan queue:restart
 查看进程数量：
 ps -ef | grep 'artisan queue' |grep -v 'grep' | wc -l
 查看详细进程
