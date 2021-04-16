@@ -12,7 +12,13 @@ class DormitoryWarningRecord extends Model
     //protected $connection = "mysql_dorm";
     protected $table = "dormitory_warning_record";
     protected $fillable = [];
-    
 
+    protected $appends = ['type'];
+
+    //名称
+    public function getTypeAttribute()
+    {
+        return '非法闯入';
+    }
 
 }

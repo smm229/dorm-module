@@ -82,7 +82,7 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
         $api->group(['prefix' => 'information'], function ($api) {
             $api->post('realtime', 'InformationController@realtime');//实时查寝
             $api->post('data', 'InformationController@data');//综合数据
-
+            $api->post('index', 'InformationController@index');//宿管首页
         });
 
         //管理员相关
@@ -114,7 +114,8 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
             $apione->post('add',  'VisitController@create');//添加访客
             $apione->post('edit', 'VisitController@edit');//编辑访客
             $apione->post('del',  'VisitController@del');//删除访客
-            $apione->get('list',  'VisitController@lists');//访客列表
+            $apione->any('list',  'VisitController@lists');//访客列表
+            $apione->any('logss', 'VisitController@logss');//访客通行记录
         });
     });
 

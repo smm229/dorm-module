@@ -53,12 +53,18 @@ composer require smm229/dorm-module
         \Modules\Dorm\Console\NoBack::class,
         //截止昨日多日无记录
         \Modules\Dorm\Console\NoRecord::class,
+        //宿管首页数据统计告警记录
+        \Modules\Dorm\Console\RecordInfo::class,
+        //宿管首页统计24小时通行数
+        \Modules\Dorm\Console\Reckon::class,
     ];
     .....
     protected function schedule(Schedule $schedule)
     {
          $schedule->command('no_back')->dailyAt("00:01");//第一分钟执行
          $schedule->command('no_record')->dailyAt("01:00");//凌晨一点执行
+         $schedule->command('record_info')->everyTenMinutes();//10分钟执行
+         $schedule->command('reckon')->everyTenMinutes();//10分钟执行
     }
 ```
 5、添加crontab计划任务<br/>

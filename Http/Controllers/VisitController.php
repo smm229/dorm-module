@@ -9,7 +9,9 @@ use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Modules\Dorm\Entities\DormitoryAccessRecord;
 use Modules\Dorm\Entities\DormitoryGroup;
+use Modules\Dorm\Entities\DormitoryGuestAccessRecord;
 use Modules\Dorm\Entities\Visit;
 use Modules\Dorm\Http\Requests\VisitValidate;
 use senselink;
@@ -30,12 +32,10 @@ class VisitController extends Controller
      */
     public function create(VisitValidate $request)
     {
-
         $visit_place = explode(',', $request['visit_place']);
         $groups = DB::table('dormitory_group')->whereIn('id', $visit_place)->pluck('visitor_groupid')->toArray();
         $groups = implode(',', $groups);
-        $Res = config('filesystems.disks.public.root');
-        $headimg['path'] = $Res.$request['headimg'];
+        $headimg['path'] = public_path($request['headimg']);
         $imagetype = substr(strrchr($headimg['path'],'.'),1);
         if (strtolower($imagetype) == 'jpg') {
             $imagetype = 'jpeg';
@@ -108,8 +108,7 @@ class VisitController extends Controller
         $visit_place = explode(',', $request['visit_place']);
         $groups = DB::table('dormitory_group')->whereIn('id', $visit_place)->pluck('visitor_groupid')->toArray();
         $groups = implode(',', $groups);
-        $Res = config('filesystems.disks.public.root');
-        $headimg['path'] = $Res.$request['headimg'];
+        $headimg['path'] = public_path($request['headimg']);
         $imagetype = substr(strrchr($headimg['path'],'.'),1);
         if (strtolower($imagetype) == 'jpg') {
             $imagetype = 'jpeg';
@@ -135,7 +134,8 @@ class VisitController extends Controller
                 if ($result_links['code'] == 200) {
                     $result_link = $this->senselink->linkguest_edit($perInfo[0]['link_id'], $request['username'], $receptionUserId, $headimg, $request['begin_time'], $request['end_time'], $groups);
                 }
-            } else {
+            }
+            if ($perInfo && $perInfo[0]['id'] != $request['id']) {
                 return $this->response->array(['status_code' => 200, 'message'=> '访客已存在，请重新编辑', 'data' => $perInfo]);
             }
         }
@@ -197,10 +197,34 @@ class VisitController extends Controller
      */
     public function lists(Request $request)
     {
-        $res = Visit::orderBy('id', 'desc')->paginate($request['pageSize'])->toArray();
+        $res = Visit::where(function ($req) use ($request) {
+            if ($request['search'] && is_numeric($request['search'])) $req->where('ID_number', 'like', '%'.$request['search'].'%');
+            if ($request['search'] && is_numeric($request['search']) == false) $req->where('username', 'like', '%'.$request['search'].'%');
+            if ($request['begin_time']) $req->where('begin_time', '>=', $request['begin_time']);
+            if ($request['end_time']) $req->where('end_time', '<=', $request['end_time']);
+        })->orderBy('id', 'desc')->paginate($request['pageSize'])->toArray();
         if (!$res) {
             return $this->response->error('获取失败',201);
         }
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
     }
+
+    /**
+     * 获取访客列表
+     * @param VisitValidate $request
+     * @return \Dingo\Api\Http\Response|void
+     */
+    public function logss(Request $request)
+    {
+        $res = DormitoryGuestAccessRecord::where(function ($req) use ($request) {
+            if ($request['buildid'])    $req->where('buildid', $request['buildid']);
+            if ($request['begin_time']) $req->where('pass_time', '>=', $request['begin_time']);
+            if ($request['end_time'])   $req->where('pass_time', '<=', $request['end_time']);
+        })->orderBy('id', 'desc')->paginate($request['pageSize'])->toArray();
+        if (!$res) {
+            return $this->response->error('获取失败',201);
+        }
+        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
+    }
+
 }

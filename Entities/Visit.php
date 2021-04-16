@@ -27,8 +27,7 @@ class Visit extends Model
     public function getvisitplacenameAttribute()
     {
         $this->visit_place = explode(',', $this->visit_place);
-        $buildName = DormitoryGroup::whereIn('id', $this->visit_place)->pluck('title')->toArray();
-        return implode(',', $buildName);
+        return DormitoryGroup::whereIn('id', $this->visit_place)->get()->toArray();
     }
 
     public function getreceptionusernameAttribute()
