@@ -34,10 +34,10 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
     $api->group(['middleware'=>['DormPermission']],function ($api) {  //权限管理
         //楼宇
         $api->group(['prefix' => 'buildings'], function ($api) {
-            $api->post('list', 'DormController@lists');//宿舍楼宇列表
-            $api->post('add', 'DormController@add');//添加宿舍楼宇
-            $api->post('edit', 'DormController@edit');//编辑宿舍楼宇
-            $api->post('del', 'DormController@del');//删除宿舍楼宇
+            $api->post('list', 'DormController@lists');//宿舍楼宇or权限组列表
+            $api->post('add', 'DormController@add');//添加宿舍楼宇or权限组
+            $api->post('edit', 'DormController@edit');//编辑宿舍楼宇or权限组
+            $api->post('del', 'DormController@del');//删除宿舍楼宇or权限组
             $api->post('cate/add', 'DormController@add_cate');//添加楼宇、宿舍类型
             $api->post('cate/edit', 'DormController@edit_cate');//编辑楼宇、宿舍类型
             $api->post('cate/del', 'DormController@del_cate');//删除楼宇、宿舍类型
@@ -117,6 +117,21 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
             $apione->any('list',  'VisitController@lists');//访客列表
             $apione->any('logss', 'VisitController@logss');//访客通行记录
         });
+
+        //权限组相关
+        $api->group(['prefix' => 'group'], function ($apione) {
+            $apione->post('addperson',      'DormGroupController@addperson');//权限分配人员
+            $apione->post('delperson',      'DormGroupController@delperson');//权限分配人员
+            $apione->post('getpersonlist',  'DormGroupController@getpersonlist');//权限组下人员列表
+            $apione->post('getunpersonlist','DormGroupController@getunpersonlist');//权限组下未人员列表
+            $apione->post('getdevicelist',  'DormGroupController@getdevicelist');//权限组下未分组设备
+        });
+
+        //黑名单
+        $api->group(['prefix' => 'black'], function ($apione) {
+
+        });
+
     });
 
     //星云设备

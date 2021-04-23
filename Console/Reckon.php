@@ -106,7 +106,7 @@ class Reckon extends Command
             ];
             RedisSet('times_data', $times, 600);//缓存900S
         }catch(\exception $e){
-            file_put_contents(storage_path('logs/reckon.log'),$today.'数据统计失败，报错：'.$e->getFile().$e->getLine().$e->getMessage());
+            file_put_contents(storage_path('logs/reckon.log'),date('Y-m-d H:i:s').'数据统计失败，报错：'.$e->getFile().$e->getLine().$e->getMessage().PHP_EOL,FILE_APPEND);
         }
     }
 

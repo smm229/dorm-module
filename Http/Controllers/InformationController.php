@@ -50,10 +50,10 @@ class InformationController extends Controller
         //入住
         $data['stay'] = $data['total_bed']-$data['no_stay'];
         //入住率
-        $data['stay_percrent'] = $data['total_bed'] ? 1-sprintf("%.1f",$data['no_stay']/$data['total_bed']) : 0;
+        $data['stay_percrent'] = $data['total_bed'] ? sprintf("%.1f",($data['total_bed']-$data['no_stay'])*100/$data['total_bed']) : '0';
         //设备在线率
         $senselink = new \senselink();
-        $res = $senselink->linkdevice_list();
+        $res = $senselink->linkdevice_list('',1,2000);
         $online = $offline = $total_device = 0;
         if($res['code']==200 && !empty($res['data'])){
             $total_device = $res['data']['total']; //设备总数
@@ -71,10 +71,11 @@ class InformationController extends Controller
         $data['total_device'] = $total_device;//总设备
         $data['online_device'] = $online;//在线
         $data['offline_device'] = $offline;//离线
-        $data['online_percent'] = $total_device==0 ? '0' : sprintf("%.1f",$online/$total_device);
+        $data['online_percent'] = $total_device==0 ? '0' : sprintf("%.1f",$online*100/$total_device);
         //归寝率
         $data['student'] = Student::count();
         $data['student_back'] = DormitoryBeds::where('is_in',1)->count(); //在宿舍
+        $data['student_back_percent'] = $data['student'] ? sprintf("%.1f",$data['student_back']*100/$data['student']) : '0';
         $data['student_noback'] = $data['student']-$data['student_back']; //未归
         //设备报修
         //处理中 已处理 未处理

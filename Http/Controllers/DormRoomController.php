@@ -160,7 +160,7 @@ class DormRoomController extends Controller
             });
             return showMsg('操作成功',200);
         }catch(\Exception $e){
-            return showMsg('添加失败');
+            return showMsg('添加失败'.$e->getMessage());
         }
     }
 

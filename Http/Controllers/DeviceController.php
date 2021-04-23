@@ -114,8 +114,8 @@ class DeviceController extends Controller
             return $this->response->error('请选择要分配楼宇',201);
         }
         //因为设备默认要有员工，访客，黑名单的组
-        $groupArr = DormitoryGroup::where('id', $request['groupid'])->get(['groupid', 'visitor_groupid', 'blacklist_groupid'])->toArray();
-        if ($groupArr && $groupArr[0]['groupid'] && $groupArr[0]['visitor_groupid'] && $groupArr[0]['blacklist_groupid']) {
+        $groupArr = DormitoryGroup::where('id', $request['groupid'])->get(['groupid', 'visitor_groupid'])->toArray();
+        if ($groupArr && $groupArr[0]['groupid'] && $groupArr[0]['visitor_groupid']) {
                 DB::beginTransaction();
                 //删除设备的绑定关系
                 $delRes = DormitoryBuildingDevice::where('deviceid', $request['id'])->delete();
@@ -123,22 +123,18 @@ class DeviceController extends Controller
                     'deviceid'     => $request['id'],
                     'groupid'      => $groupArr[0]['groupid'],
                     'senselink_sn' => $request['senselink_sn'],
-                    'grouptype'    => 1
+                    'grouptype'    => 1,
+                    'devicename'   => $request['name'],
                 ];
                 $insert[] = [
                     'deviceid'     => $request['id'],
                     'groupid'      => $groupArr[0]['visitor_groupid'],
                     'senselink_sn' => $request['senselink_sn'],
-                    'grouptype'    => 2
-                ];
-                $insert[] = [
-                    'deviceid'     => $request['id'],
-                    'groupid'      => $groupArr[0]['blacklist_groupid'],
-                    'senselink_sn' => $request['senselink_sn'],
-                    'grouptype'    => 5
+                    'grouptype'    => 2,
+                    'devicename'   => $request['name'],
                 ];
                 $insertRes = DormitoryBuildingDevice::insert($insert);
-                $result = $this->senselink->linkdevice_edit($request['id'], $request['name'], $request['location'], $request['direction'], $groupArr[0]['groupid'], $groupArr[0]['visitor_groupid'], $groupArr[0]['blacklist_groupid']);
+                $result = $this->senselink->linkdevice_edit($request['id'], $request['name'], $request['location'], $request['direction'], $groupArr[0]['groupid'], $groupArr[0]['visitor_groupid']);
             if ($result['code'] == 200 && $result['message'] == 'OK') {
                 DB::commit();
                 return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $result]);
