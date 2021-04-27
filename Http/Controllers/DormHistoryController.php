@@ -63,7 +63,7 @@ class DormHistoryController extends Controller
         $excel = new Export($data, $header,'住宿历史');
         $file = 'file/'.time().'.xlsx';
         if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
-            return showMsg('成功',200,['url'=>$file]);
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
         }
         return showMsg('下载失败');
     }
@@ -139,7 +139,7 @@ class DormHistoryController extends Controller
         $excel = new Export($data, $header,'通行记录');
         $file = 'file/'.time().'.xlsx';
         if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
-            return showMsg('成功',200,['url'=>$file]);
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
         }
         return showMsg('下载失败');
     }
@@ -212,7 +212,7 @@ class DormHistoryController extends Controller
         $excel = new Export($data, $header,'晚归记录');
         $file = 'file/'.time().'.xlsx';
         if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
-            return showMsg('成功',200,['url'=>$file]);
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
         }
         return showMsg('下载失败');
     }
@@ -283,7 +283,7 @@ class DormHistoryController extends Controller
         $excel = new Export($data, $header,'未归记录');
         $file = 'file/'.time().'.xlsx';
         if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
-            return showMsg('成功',200,['url'=>$file]);
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
         }
         return showMsg('下载失败');
     }
@@ -347,7 +347,7 @@ class DormHistoryController extends Controller
         $excel = new Export($data, $header,'多日无记录');
         $file = 'file/'.time().'.xlsx';
         if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
-            return showMsg('成功',200,['url'=>$file]);
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
         }
         return showMsg('下载失败');
     }

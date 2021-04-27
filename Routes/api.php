@@ -129,7 +129,7 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
 
         //黑名单
         $api->group(['prefix' => 'black'], function ($apione) {
-
+            $apione->post('add',  'DormBlackController@add');    //添加黑名单
         });
 
     });
