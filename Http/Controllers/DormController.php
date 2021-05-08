@@ -64,7 +64,7 @@ class DormController extends Controller
         $excel = new Export($data, $header,'宿舍楼信息');
         $file = 'file/'.time().'.xlsx';
         if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
-            return showMsg('成功',200,['url'=>$file]);
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
         }
         return showMsg('下载失败');
     }
@@ -133,6 +133,7 @@ class DormController extends Controller
                         $value = array_merge(['idnum'=>$value], $build);
                     }, $build);
                     DormitoryUsersBuilding::insert($users);
+                    Teacher::whereIn('idnum',$users)->update(['type'=>2]); //身份改为宿管
                 }
             }
             if ($type ==  DormitoryGroup::GROUPTYPE) {
@@ -243,12 +244,14 @@ class DormController extends Controller
             if ($request->teachers) {
                 $teacherids = DormitoryUsersBuilding::where($build)->pluck('idnum')->toArray();
                 DormitoryUsersBuilding::where($build)->delete();
+                Teacher::whereIn('idnum',$teacherids)->update(['type'=>1]); //身份先改为普通老师
                 $users = explode(',', $request->teachers);
                 //宿管关联表
                 array_walk($users, function (&$value, $key, $build) {
                     $value = array_merge(['idnum' => $value], $build);
                 }, $build);
                 DormitoryUsersBuilding::insert($users);
+                Teacher::whereIn('idnum',$users)->update(['type'=>2]); //改为宿管
             }
             //编辑管辖设备，可以为空数组
             $blackId = env("LIKEGROUP_BLACKID") ?? 3;
@@ -298,7 +301,7 @@ class DormController extends Controller
                  return showMsg('修改成功',200);
             } else {
                  DB::rollBack();
-                 return showMsg('修改失败');
+                 return showMsg('修改失败'.json_encode($res));
             }
         }catch(\Exception $e){
             return showMsg($e->getMessage());
@@ -348,7 +351,7 @@ class DormController extends Controller
         }
     }
 
-    /*
+    /**
      * 添加楼宇类型
      * @param name string 名称
      * @param sort int 排序

@@ -39,7 +39,7 @@ class DormRoomController extends Controller
         $excel = new Export($data, $header,'宿舍信息');
         $file = 'file/'.time().'.xlsx';
         if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
-            return showMsg('成功',200,['url'=>$file]);
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
         }
         return showMsg('下载失败');
     }

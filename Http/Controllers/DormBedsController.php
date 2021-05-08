@@ -9,6 +9,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Modules\Dorm\Entities\DormitoryBeds;
+use Modules\Dorm\Entities\DormitoryChangeApply;
 use Modules\Dorm\Entities\DormitoryRoom;
 use Modules\Dorm\Entities\DormitoryStayrecords;
 use Modules\Dorm\Http\Requests\DormitoryBedsValidate;
@@ -46,7 +47,7 @@ class DormBedsController extends Controller
         $excel = new Export($data, $header,'床位信息');
         $file = 'file/'.time().'.xlsx';
         if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
-            return showMsg('成功',200,['url'=>$file]);
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
         }
         return showMsg('下载失败');
     }
@@ -115,6 +116,10 @@ class DormBedsController extends Controller
         if($beds->idnum){ //有人员住
             return showMsg('请选择其他床位');
         }
+        //是否有审核中的申请
+        if(DormitoryChangeApply::where(['idnum'=>$request->idnum,'status'=>1])->first()){
+            return showMsg('存在审核中的申请');
+        }
         if(DormitoryBeds::where('idnum',$request->idnum)
             ->first()){
             $type = 2;
@@ -132,9 +137,20 @@ class DormBedsController extends Controller
                 //分配学员
                 DormitoryBeds::whereId($request->bedsid)->update(['idnum'=>$request->idnum,'is_in'=>2]);
                 //同步宿舍信息到学生中心
-                Student::where('idnum',$request->idnum)->update([
+                $student = Student::where('idnum',$request->idnum)->first();
+                Student::whereId($student->id)->update([
                     'dorminfo'=>$beds->build_name.$beds->floornum.$beds->room_num.$beds->bednum,
                     'updated_at'=>date('Y-m-d H:i:s')
+                ]);
+                DormitoryChangeApply::insert([
+                    'idnum'=>$request->idnum,
+                    'username'  =>  $student->username,
+                    'buildid'   =>  $beds->buildid,
+                    'floornum'  =>  $beds->floornum,
+                    'roomid'    =>  $beds->roomid,
+                    'roomnum'   =>  $beds->room_num,
+                    'bednum'    =>  $beds->bednum,
+                    'status'    =>  2
                 ]);
             });
             //调宿记录

@@ -57,6 +57,8 @@ composer require smm229/dorm-module
         \Modules\Dorm\Console\RecordInfo::class,
         //宿管首页统计24小时通行数
         \Modules\Dorm\Console\Reckon::class,
+        //推送模板消息
+        Modules\Dorm\Console\WechatPush::class,
     ];
     .....
     protected function schedule(Schedule $schedule)
@@ -65,6 +67,7 @@ composer require smm229/dorm-module
          $schedule->command('no_record')->dailyAt("01:00");//凌晨一点执行
          $schedule->command('record_info')->everyTenMinutes();//10分钟执行
          $schedule->command('reckon')->everyTenMinutes();//10分钟执行
+         $schedule->command('wechat_push')->dailyAt("07:00");//早上七点执行
     }
 ```
 5、添加crontab计划任务<br/>

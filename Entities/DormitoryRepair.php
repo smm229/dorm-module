@@ -26,7 +26,7 @@ class DormitoryRepair extends Model
 
     //图集
     public function getCoversAttribute($value){
-        $this->attributes['covers'] = json_decode($value,true);
+        return json_decode($value,true);
     }
     /*
      * 关联学生,其他库

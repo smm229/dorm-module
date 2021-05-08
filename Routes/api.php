@@ -114,8 +114,8 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm']],function ($a
             $apione->post('add',  'VisitController@create');//添加访客
             $apione->post('edit', 'VisitController@edit');//编辑访客
             $apione->post('del',  'VisitController@del');//删除访客
-            $apione->any('list',  'VisitController@lists');//访客列表
-            $apione->any('logss', 'VisitController@logss');//访客通行记录
+            $apione->post('list',  'VisitController@lists');//访客列表
+            $apione->post('logss', 'VisitController@logss');//访客通行记录
         });
 
         //权限组相关

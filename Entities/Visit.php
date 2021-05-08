@@ -13,10 +13,6 @@ class Visit extends Model
     protected $fillable = [];
     protected $table = 'dormitory_guest';
     protected $appends = ['visitplacename', 'sex_name', 'receptionusername'];
-    protected static function newFactory()
-    {
-        return \Modules\Dorm\Database\factories\VisitFactory::new();
-    }
 
     public function getSexNameAttribute()
     {
@@ -24,13 +20,13 @@ class Visit extends Model
         return $this->sex ? $sex[$this->sex] : '保密';
     }
 
-    public function getvisitplacenameAttribute()
+    public function getVisitplacenameAttribute()
     {
         $this->visit_place = explode(',', $this->visit_place);
         return DormitoryGroup::whereIn('id', $this->visit_place)->get()->toArray();
     }
 
-    public function getreceptionusernameAttribute()
+    public function getReceptionusernameAttribute()
     {
          return Teacher::where('senselink_id', $this->receptionUserId)->value('username');
     }
