@@ -80,22 +80,33 @@ class NoRecord extends Command
                         ->get()->toArray();
                     array_walk($students, function ($value, $key) use ($date){
                         if($value['student']) {
-                            $arr = [
+                            $record = DormitoryNoRecord::where([
                                 'buildid' => $value['buildid'],
                                 'type' => 1,
                                 'idnum' => $value['idnum'],
-                                'username' => $value['student']['username'],
-                                'sex' => $value['student']['sex_name'],
-                                'college_name' => $value['student']['collegename'],
-                                'major_name' => $value['student']['majorname'],
-                                'grade_name' => $value['student']['grade'],
-                                'class_name' => $value['student']['classname'],
-                                'build_name' => $value['build_name'],
-                                'roomnum' => $value['room_num'],
-                                'bednum' => $value['bednum'],
-                                'date' => date('Y-m-d',strtotime("-1 day"))
-                            ];
-                            DormitoryNoRecord::insert($arr);
+                                'end_date'  =>  date('Y-m-d',strtotime("-2 day"))
+                            ])->first();//统计前天是否有记录
+                            if($record){
+                                DormitoryNoRecord::whereId($record->id)->update(['end_date'  =>  date('Y-m-d',strtotime("-1 day"))]);
+                            }else{
+                                $arr = [
+                                    'buildid' => $value['buildid'],
+                                    'type' => 1,
+                                    'idnum' => $value['idnum'],
+                                    'username' => $value['student']['username'],
+                                    'sex' => $value['student']['sex_name'],
+                                    'college_name' => $value['student']['collegename'],
+                                    'major_name' => $value['student']['majorname'],
+                                    'grade_name' => $value['student']['grade'],
+                                    'class_name' => $value['student']['classname'],
+                                    'build_name' => $value['build_name'],
+                                    'roomnum' => $value['room_num'],
+                                    'bednum' => $value['bednum'],
+                                    'begin_date' => $date,
+                                    'end_date'  =>  date('Y-m-d',strtotime("-1 day")) //今天统计截止到昨天
+                                ];
+                                DormitoryNoRecord::insert($arr);
+                            }
                         }
                     });
 

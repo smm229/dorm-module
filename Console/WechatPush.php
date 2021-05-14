@@ -49,6 +49,7 @@ class WechatPush extends Command
      */
     public function handle()
     {
+        $date = date('Y-m-d',strtotime('-1 day'));
         //查询每栋楼的数据
         $builds = DormitoryGroup::whereType(1)->get();
         if($builds->first()) {
@@ -65,7 +66,7 @@ class WechatPush extends Command
                         $post_data = array(
                             'touser' => $vv->openid,  //用户openid
                             'template_id' => "iVuv29hmHO7IeDxttnUqJgjzNzf4_WPv16GFpKJBhGc", //在公众号下配置的模板id
-                            'url' => env('WEB_URL')."/", //点击模板消息会跳转的链接
+                            'url' => env('WEB_URL')."/h5/#/pages/house-manage-page/report-form/index?date=$date&buildid=".$v->id, //点击模板消息会跳转的链接
                             'topcolor' => "#7B68EE",
                             'data' => array(
                                 'first' => array('value' => "昨日数据推送", 'color' => "#FF0000"),
@@ -85,14 +86,14 @@ class WechatPush extends Command
                 ->select('personnel_oauth.*')
                 ->where('personnel_oauth.type',2)
                 ->where('personnel_oauth.channel','mp')
-                ->group('personnel_classes.idnum')
+                ->groupBy('personnel_classes.idnum')
                 ->get();
         if($list->first()){
             foreach($list as $v){
-                $data = array(
+                $post_data = array(
                     'touser' => $v->openid,  //用户openid
                     'template_id' => "iVuv29hmHO7IeDxttnUqJgjzNzf4_WPv16GFpKJBhGc", //在公众号下配置的模板id
-                    'url' => env('WEB_URL')."/", //点击模板消息会跳转的链接
+                    'url' => env('WEB_URL')."/h5/#/pages/teacher-page/report-form/index?date=$date", //点击模板消息会跳转的链接
                     'topcolor' => "#7B68EE",
                     'data' => array(
                         'first' => array('value' => "昨日数据推送", 'color' => "#FF0000"),
@@ -101,7 +102,7 @@ class WechatPush extends Command
                         'remark' => array('value' => '点击详情查看明细', 'color' => '#448aff'),
                     )
                 );
-                Push($data);
+                Push($post_data);
             }
         }
     }

@@ -189,7 +189,7 @@ class InformationController extends Controller
             //未归
             $build->no_back = DormitoryNoBackRecord::where('buildid',$build->id)->where('date',$yesterday)->count();
             //多天无记录
-            $build->no_record = DormitoryNoRecord::where('buildid',$build->id)->where('date',$yesterday)->count();
+            $build->no_record = DormitoryNoRecord::where('buildid',$build->id)->where('end_date',$yesterday)->count();
             //访客
             $build->guest = DormitoryGuestAccessRecord::where('buildid',$build->id)
                 ->whereBetween('pass_time',[$yesterday,$yesterday.' 23:59:59'])

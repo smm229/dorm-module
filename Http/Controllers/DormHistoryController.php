@@ -306,7 +306,8 @@ class DormHistoryController extends Controller
                 if($request->idnum) $q->whereIdnum($request->idnum);
                 if($request->college_name) $q->where('college_name',$request->college_name);
             })
-            ->whereBetween('date',[$start_date,$end_date])
+            ->where('begin_date','<=',$start_date)
+            ->where('end_date','>=',$end_date)
             ->whereType(1)
             ->paginate($pagesize);
 
@@ -327,7 +328,8 @@ class DormHistoryController extends Controller
                 if($request->idnum) $q->whereIdnum($request->idnum);
                 if($request->college_name) $q->where('college_name',$request->college_name);
             })
-            ->whereBetween('date',[$start_date,$end_date])
+            ->where('begin_date','<=',$start_date)
+            ->where('end_date','>=',$end_date)
             ->whereType(1)
             ->get()
             ->toArray();
