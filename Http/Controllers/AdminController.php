@@ -74,7 +74,6 @@ class AdminController extends Controller
      * 获取管理员列表
      */
     public function lists(Request $request) {
-<<<<<<< HEAD
         $res = DormitoryUsers::leftjoin('personnel_teacher','personnel_teacher.idnum','=','dormitory_users.idnum')
             ->select('dormitory_users.*')
             ->where(function ($req) use ($request){
@@ -86,25 +85,6 @@ class AdminController extends Controller
             })
             ->orderBy('id', 'desc')
             ->paginate($request['pageSize']);
-=======
-        $res = DormitoryUsers::where(function ($req) use ($request){
-            //模糊查询
-            $title = false;
-            if ($request['search']) {
-                $search = $request['search'];
-                if (is_numeric($search)) {
-                    $title = 'idnum';
-                } else {
-                    $title = 'username';
-                }
-            }
-            if ($title) $req->where($title, 'like', "%$search%");
-        })->with('role')->orderBy('id','desc')->paginate($request['pageSize']);
-
->>>>>>> qyb_dev
-        if (!$res) {
-            return $this->response->error('获取管理员失败',201);
-        }
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
     }
 
