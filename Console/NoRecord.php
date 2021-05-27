@@ -95,6 +95,7 @@ class NoRecord extends Command
                                     'idnum' => $value['idnum'],
                                     'username' => $value['student']['username'],
                                     'sex' => $value['student']['sex_name'],
+                                    'campusname'=>$value['student']['campusname'],
                                     'college_name' => $value['student']['collegename'],
                                     'major_name' => $value['student']['majorname'],
                                     'grade_name' => $value['student']['grade'],

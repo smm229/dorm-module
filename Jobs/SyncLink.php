@@ -60,7 +60,8 @@ class SyncLink implements ShouldQueue
         file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') ."开始执行--Synclink--解绑link队列任务，type:{$this->type},userid:{$this->userId} ,buildid:{$this->buildid}".PHP_EOL,FILE_APPEND);
         if(empty($this->userId) || empty($this->buildid)){
             file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') ."参数异常--Synclink--队列中止，userid:{$this->userId} ,buildid:{$this->buildid}".PHP_EOL,FILE_APPEND);
-            $this->delete();
+            //$this->delete();
+            return false;
         }
         try {
             $senselink = new senselink();
@@ -68,7 +69,8 @@ class SyncLink implements ShouldQueue
             // 如果参试大于三次
             if ($this->attempts() > $this->tries) {
                 file_put_contents(storage_path('logs/Synclink.log'),'Synclink--尝试失败次数过多'.PHP_EOL,FILE_APPEND);
-                $this->delete();
+                //$this->delete();
+                return false;
             } else {
                 file_put_contents(storage_path('logs/Synclink.log'),'Synclink--删除关联'.PHP_EOL,FILE_APPEND);
                 //查询楼宇绑定的link组
@@ -98,14 +100,16 @@ class SyncLink implements ShouldQueue
                         }
                     }
                 }
-                sleep(2);//2秒延迟
-                $this->delete();
+                //sleep(2);//2秒延迟
+                //$this->delete();
+                return true;
                 file_put_contents(storage_path('logs/Synclink.log'),date('Y-m-d H:i:s') . '队列--Synclink--执行结束'.PHP_EOL,FILE_APPEND);
             }
         }catch(\Exception $exception){
-            $this->delete();
+            //$this->delete();
             file_put_contents(storage_path('logs/Synclink.log'),'队列任务执行失败'."\n".date('Y-m-d H:i:s').','.$exception->getMessage().PHP_EOL,FILE_APPEND);
             file_put_contents(storage_path('logs/Synclink.log'),'用户linkid ：'.$this->userId.'，楼宇：'.$this->buildid.'，类型：'.$this->type.PHP_EOL,FILE_APPEND);
+            return false;
         }
     }
 }

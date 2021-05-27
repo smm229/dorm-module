@@ -166,7 +166,7 @@ class InformationController extends Controller
         $list['online_device'] = $online;
         //设备离线数
         $list['outline_device'] = $outline;
-        //昨日数据
+        //楼宇数据
         $list['build'] = $this->builds();
         return showMsg('获取成功',200,$list);
     }
@@ -177,31 +177,43 @@ class InformationController extends Controller
     private function builds(){
         //楼宇列表
         $builds = DormitoryGroup::whereType(1)->get(['id','title'])->map(function ($build) {
-            $yesterday = date('Y-m-d',strtotime('-1 day'));
+            $today = date('Y-m-d');
             //入住率
             $build->probability = $build->total_beds ? round($build->total_person*100/$build->total_beds): 0;
             //晚归数量
             $build->later = DormitoryAccessRecord::whereType(1)
                 ->where('buildid',$build->id)
                 ->whereStatus(1)
-                ->whereBetween('pass_time',[$yesterday,$yesterday.' 23:59:59'])
+                ->whereBetween('pass_time',[$today, $today.' 23:59:59'])
                 ->count();
             //未归
-            $build->no_back = DormitoryNoBackRecord::where('buildid',$build->id)->where('date',$yesterday)->count();
+            $build->no_back = DormitoryNoBackRecord::where('buildid', $build->id)->where('date', $today)->count();
             //多天无记录
-            $build->no_record = DormitoryNoRecord::where('buildid',$build->id)->where('end_date',$yesterday)->count();
+            $build->no_record = DormitoryNoRecord::where('buildid', $build->id)->where('end_date', $today)->count();
             //访客
-            $build->guest = DormitoryGuestAccessRecord::where('buildid',$build->id)
-                ->whereBetween('pass_time',[$yesterday,$yesterday.' 23:59:59'])
+            $build->guest = DormitoryGuestAccessRecord::where('buildid', $build->id)
+                ->whereBetween('pass_time',[$today, $today.' 23:59:59'])
                 ->count();
             //黑名单
-            $build->black = DormitoryBlackAccessRecord::where('buildid',$build->id)
-                ->whereBetween('pass_time',[$yesterday,$yesterday.' 23:59:59'])
+            $build->black = DormitoryBlackAccessRecord::where('buildid', $build->id)
+                ->whereBetween('pass_time',[$today, $today.' 23:59:59'])
                 ->count();
             //非法记录
-            $build->warning = DormitoryWarningRecord::where('buildid',$build->id)
-                ->whereBetween('pass_time',[$yesterday,$yesterday.' 23:59:59'])
+            $build->warning = DormitoryWarningRecord::where('buildid', $build->id)
+                ->whereBetween('pass_time',[$today, $today.' 23:59:59'])
                 ->count();
+            //请假人员
+            $leave_person = DormitoryLeave::leftjoin('dormitory_beds','dormitory_beds.idnum','=','dormitory_leave.idnum')
+                ->select('dormitory_leave.id')
+                ->where('dormitory_leave.start_time','<=',$today)
+                ->where('dormitory_leave.end_time','>=',$today.' 23:59:59')
+                ->where('dormitory_leave.status',2)
+                ->get();
+            $build->leave_person = count($leave_person);
+            //归寝
+            $build->in_person = DormitoryBeds::where('buildid', $build->id)->whereNotNull('idnum')->where('is_in', 1)->count();
+            //未归
+            $build->out_person = DormitoryBeds::where('buildid', $build->id)->whereNotNull('idnum')->where('is_in', 2)->count();
             return $build;
         });
 

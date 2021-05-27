@@ -63,14 +63,16 @@ class Stayrecords implements ShouldQueue
         file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s').'开始执行--Stayrecords--队列任务,入参data:'.json_encode($this->data).PHP_EOL,FILE_APPEND);
         if(empty($this->data)){
             file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') ."参数异常--Synclink--队列中止".PHP_EOL,FILE_APPEND);
-            $this->delete();
+            //$this->delete();
+            return false;
         }
         try {
             file_put_contents(storage_path('logs/stayrecords.log'),'attempts次数'.$this->attempts().PHP_EOL,FILE_APPEND);
             // 如果参试大于三次
             if ($this->attempts() > $this->tries) {
                 file_put_contents(storage_path('logs/stayrecords.log'),'Stayrecords--尝试失败次数过多'.PHP_EOL,FILE_APPEND);
-                $this->delete();
+                //$this->delete();
+                return false;
             } else {
                 //执行住宿记录
                 if($this->type==3){ //退宿
@@ -78,14 +80,15 @@ class Stayrecords implements ShouldQueue
                 }else{
                     self::record($this->data,$this->type,$this->buildid);
                 }
-                sleep(2);//2秒延迟
-                $this->delete();
+                //$this->delete();
                 file_put_contents(storage_path('logs/stayrecords.log'),date('Y-m-d H:i:s') . '队列--Stayrecords--执行结束'.PHP_EOL,FILE_APPEND);
+                return true;
             }
         }catch(\Exception $exception){
-            $this->delete();
+            //$this->delete();
             file_put_contents(storage_path('logs/stayrecords.log'),'队列任务执行失败'.$exception->getFile().$exception->getLine().$exception->getMessage().PHP_EOL,FILE_APPEND);
             file_put_contents(storage_path('logs/stayrecords.log'),'数据内容：'.json_encode($this->data).PHP_EOL,FILE_APPEND);
+            return false;
         }
     }
 
@@ -113,6 +116,7 @@ class Stayrecords implements ShouldQueue
                 'idnum' => $data->idnum,//学号
                 'sex' => $user->sex_name,//性别
                 'gradeName' => $user->grade,//年级
+                'campusname'=>$user->campusname,
                 'collegeName' => $user->collegename,//学院
                 'majorName' => $user->majorname,//专业
                 'className' => $user->classname,//班级
@@ -126,11 +130,14 @@ class Stayrecords implements ShouldQueue
             file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--重新分配组关系，调宿用户id：' . $user->senselink_id . '，到宿舍楼' . $data->buildid . PHP_EOL, FILE_APPEND);
             if ($user->senselink_id) {
                 Queue::push(new SyncLink($user->senselink_id, $data->buildid, 1));
+                return true;
             } else {
                 file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--分配失败，无senselinkid，调宿用户idnum：' . $user->idnum . '，到宿舍楼' . $buildid . PHP_EOL, FILE_APPEND);
+                return false;
             }
         }catch(\Exception $e){
             file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--分配失败，用户工号：' . $user->idnum . '，到宿舍楼' . $buildid .'，错误信息：'. $e->getMessage(). PHP_EOL, FILE_APPEND);
+            return false;
         }
 
     }
@@ -151,9 +158,11 @@ class Stayrecords implements ShouldQueue
                 file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--批量解除组关系，退宿用户id：' . $senselink_id . PHP_EOL, FILE_APPEND);
                 if ($senselink_id) {
                     Queue::push(new SyncLink($senselink_id, $v['buildid'], 2));
+                    return true;
                 }
             }catch(\Exception $e){
                 file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--批量退宿解除关系失败用户学号：'.$v['idnum']  . PHP_EOL, FILE_APPEND);
+                return false;
             }
         }
 

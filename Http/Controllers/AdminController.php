@@ -9,6 +9,8 @@ use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use GuzzleHttp\Client;
+use Modules\Dorm\Entities\DormitoryAdminlog;
+use Modules\Dorm\Entities\DormitoryAuthUser;
 use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Entities\DormitoryUsersBuilding;
 use Illuminate\Support\Facades\DB;
@@ -29,26 +31,62 @@ class AdminController extends Controller
         if (!$request['idnumStr']) {
             return $this->response->error('参数错误',201);
         }
+
+        if(!$request['roleid']){
+            return $this->response->error('角色必填',201);
+        }
         $idnumArr = explode(',', $request['idnumStr']);
         $result = Teacher::whereIn('idnum', $idnumArr)->get()->toArray();
         $results = [];
         if ($result) {
             foreach ($result as $k => $v) {
                 $results[$k] = array_intersect_key($v, ['idnum' => '', 'username' => '', 'sex' => '', 'mobile' => '', 'headimg' => '']);
-                $results[$k]['password'] = bcrypt('123456');
+                if(!$request['password']){
+                    $results[$k]['password'] = bcrypt('123456');
+                }else{
+                    $results[$k]['password'] = bcrypt($request['password']);
+                }
             }
         }
-        $res = DormitoryUsers::insert($results);
-        if (!$res) {
+
+        try {
+            $data = [];
+            DB::transaction(function () use ($results, &$data, $request) {
+
+                foreach ($results as $k => $v) {
+                    $id = DormitoryUsers::insertGetId($v);
+                    $data[$k]['userid'] = $id;
+                    $data[$k]['roleid'] = $request['roleid'];
+                }
+
+                DormitoryAuthUser::insert($data);
+            });
+
+            return $this->response->array(['status_code' => 200, 'message'=> '成功']);
+        }catch (\Exception $e) {
+
             return $this->response->error('添加失败,请联系管理员',201);
         }
-        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
+
     }
 
     /**
      * 获取管理员列表
      */
     public function lists(Request $request) {
+<<<<<<< HEAD
+        $res = DormitoryUsers::leftjoin('personnel_teacher','personnel_teacher.idnum','=','dormitory_users.idnum')
+            ->select('dormitory_users.*')
+            ->where(function ($req) use ($request){
+                if($request->campusid) $req->where('personnel_teacher.campusid',$request->campusid);
+                if($request->departmentid) $req->where('personnel_teacher.departmentid',$request->departmentid);
+                if($request->position) $req->where('personnel_teacher.position',$request->position);
+                if($request->idnum) $req->where('personnel_teacher.idnum',$request->idnum);
+                if ($request->username) $req->where('username', $request->username);
+            })
+            ->orderBy('id', 'desc')
+            ->paginate($request['pageSize']);
+=======
         $res = DormitoryUsers::where(function ($req) use ($request){
             //模糊查询
             $title = false;
@@ -61,7 +99,9 @@ class AdminController extends Controller
                 }
             }
             if ($title) $req->where($title, 'like', "%$search%");
-        })->orderBy('id', 'desc')->paginate($request['pageSize']);
+        })->with('role')->orderBy('id','desc')->paginate($request['pageSize']);
+
+>>>>>>> qyb_dev
         if (!$res) {
             return $this->response->error('获取管理员失败',201);
         }
@@ -83,6 +123,66 @@ class AdminController extends Controller
             return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
         }
         return $this->response->error('禁用管理员失败',201);
+    }
+
+
+    /**
+     * 修改管理员
+     * @param Request $request
+     */
+    public function edit(Request $request){
+
+        if (!$request->id || !$request->roleid){
+            return showMsg('缺少参数');
+        }
+        $data = $request->only('id', 'password', 'roleid');
+
+        $info = DormitoryUsers::whereId($data['id'])->first();
+        if (!$info) {
+            return showMsg('信息错误');
+        }
+        try {
+
+            DB::transaction(function () use ($data){
+                $list = [];
+                if(isset($data['password'])) $list['password'] = bcrypt($data['password']);
+                DormitoryUsers::whereId($data['id'])->update($list);
+                DormitoryAuthUser::where('userid', $data['id'])->delete();
+                DormitoryAuthUser::insertGetId(['userid' => $data['id'], 'roleid' => $data['roleid']]);
+                });
+
+            return $this->response->array(['status_code' => 200, 'message'=> '成功']);
+        }catch(\Exception $e){
+            return $this->response->error('失败',201);
+        }
+
+    }
+
+    /**
+     * 删除管理员
+     * @param Request $request
+     */
+    public function del(Request $request){
+        $user = DormitoryUsers::whereId($request->id)->first();
+        if(!$user){
+            return $this->response->error('用户不存在',201);
+        }
+        //TODO 超级管理员id为1 不要任意修改
+        if($request->id == 1){
+            return $this->response->error('超级管理员无法删除',201);
+        }
+        if($request->id == auth()->user()->id){
+            return $this->response->error('无法删除自己',201);
+        }
+
+        try{
+            DormitoryUsers::whereId($request->id)->forceDelete();
+            DormitoryAuthUser::where('userid', $request->id)->delete();
+            return $this->response->array(['status_code' => 200, 'message'=> '成功']);
+        }catch(\Exception $e){
+            return $this->response->error('失败',201);
+        }
+
     }
 
     /**
@@ -175,6 +275,18 @@ class AdminController extends Controller
         if (!$res && !empty($res)) {
             return $this->response->error('获取失败',201);
         }
+        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
+    }
+
+    /**
+     * 管理员操作日志
+     * @param Request $request
+     */
+    public function getAadminlog(Request $request){
+        if (!$request['idnum']) {
+            return $this->response->error('参数错误',201);
+        }
+        $res = DormitoryAdminlog::where('idnum',$request['idnum'])->orderBy('id','desc')->paginate($request['pageSize']);
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
     }
 

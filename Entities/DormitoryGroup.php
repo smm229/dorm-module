@@ -85,4 +85,10 @@ class DormitoryGroup extends Model
          * */
         return $this->belongsToMany(DormitoryUsers::class,'dormitory_users_building','buildid','idnum','id','idnum');
     }
+
+    // 床位
+    public function beds()
+    {
+        return $this->hasMany(DormitoryBeds::class, 'buildid', 'id');
+    }
 }

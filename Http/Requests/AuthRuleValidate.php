@@ -7,8 +7,10 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 
-class VisitValidate extends FormRequest
+
+class AuthRuleValidate extends FormRequest
 {
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -19,31 +21,21 @@ class VisitValidate extends FormRequest
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array
-     */
     public function rules()
     {
         return [
-            'username'        => 'required',
-            'headimg'         => 'required',
-            'sex'             => 'required|int',
-            'visit_place'     => 'required',
-            'receptionUserId'=>'required'
+            'title'     =>  'required',
+            'url'       =>  'required',//后端路由
+            'router'    =>  'required' //前端路由
         ];
     }
 
     public function messages()
     {
         return [
-            'username.required'        =>  '请输入姓名',
-            'headimg.required'         =>  '请添加人脸',
-            'sex.required'             =>  '请选择性别',
-            'sex.int'                  =>  '性别格式错误',
-            'visit_place.required'     =>  '访问地点不能为空',
-            'receptionUserId.required'=>'请选择拜访人'
+            'title.required'     =>  '请输入菜单名称',
+            'url.required'       =>  '缺少后端路由',
+            'router.required'    => '缺少前端路由'
         ];
     }
 
@@ -56,6 +48,6 @@ class VisitValidate extends FormRequest
     protected function fail(int $code, array $errors) : JsonResponse
     {
         $msg =  array_first($errors);
-        return showMsg($msg,$code);
+        return showMsg($msg, $code);
     }
 }

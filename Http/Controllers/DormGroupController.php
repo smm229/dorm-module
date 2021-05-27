@@ -93,6 +93,7 @@ class DormGroupController extends Controller
                 function ($req) use ($request, $persondIds) {
                     $req->whereIn('senselink_id', $persondIds);
                 if ($request['grade'])     $req->where('grade', $request['grade']);
+                if ($request['campusid']) $req->where('campusid', $request['campusid']);
                 if ($request['collegeid']) $req->where('collegeid', $request['collegeid']);
                 if ($request['majorid'])   $req->where('majorid', $request['majorid']);
                 if ($request['classid'])   $req->where('classid', $request['classid']);
@@ -106,6 +107,7 @@ class DormGroupController extends Controller
         if ($request['type'] == 2) {
             $res = Teacher::where(function ($req) use ($request, $persondIds) {
                 $req->whereIn('senselink_id', $persondIds);
+                if ($request['campusid']) $req->where('campusid', $request['campusid']);
                 if ($request['departmentid']) $req->where('departmentid', $request['departmentid']);
                 if ($request['search']) {
                     if (is_numeric($request['search'])) {
@@ -132,6 +134,7 @@ class DormGroupController extends Controller
                 function ($req) use ($request, $persondIds) {
                     $req->whereNotIn('senselink_id', $persondIds);
                     if ($request['grade'])     $req->where('grade', $request['grade']);
+                    if ($request['campusid']) $req->where('campusid', $request['campusid']);
                     if ($request['collegeid']) $req->where('collegeid', $request['collegeid']);
                     if ($request['majorid'])   $req->where('majorid', $request['majorid']);
                     if ($request['classid'])   $req->where('classid', $request['classid']);
@@ -145,6 +148,7 @@ class DormGroupController extends Controller
         if ($request['type'] == 2) {
             $res = Teacher::where(function ($req) use ($request, $persondIds) {
                 $req->whereNotIn('senselink_id', $persondIds);
+                if ($request['campusid']) $req->where('campusid', $request['campusid']);
                 if ($request['departmentid']) $req->where('departmentid', $request['departmentid']);
                 if ($request['search']) {
                     if (is_numeric($request['search'])) {

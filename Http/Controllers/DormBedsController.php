@@ -3,6 +3,7 @@
 namespace Modules\Dorm\Http\Controllers;
 
 use App\Exports\Export;
+use App\Models\ImportLog;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -11,11 +12,10 @@ use Illuminate\Support\Facades\Queue;
 use Modules\Dorm\Entities\DormitoryBeds;
 use Modules\Dorm\Entities\DormitoryChangeApply;
 use Modules\Dorm\Entities\DormitoryRoom;
-use Modules\Dorm\Entities\DormitoryStayrecords;
 use Modules\Dorm\Http\Requests\DormitoryBedsValidate;
-use Modules\Dorm\Http\Requests\DormitoryRoomValidate;
 use Log;
 use Excel;
+use Modules\Dorm\Imports\BedsImport;
 use Modules\Dorm\Jobs\Stayrecords;
 
 class DormBedsController extends Controller
@@ -26,7 +26,7 @@ class DormBedsController extends Controller
         $this->middleware(['AuthDel'])->only(['del','del_cate']);
     }
 
-    /*
+    /**
      * 导出
      */
     public function export(Request $request){
@@ -52,10 +52,11 @@ class DormBedsController extends Controller
         return showMsg('下载失败');
     }
 
-    /*
+    /**
      * 床位列表
      * @param buildid int 宿舍楼id
      * @param floornum int 楼层
+     * @param roomnum 房间号
      */
     public function lists(Request $request){
         $pagesize = $request->pageSize ?? 12;
@@ -87,7 +88,7 @@ class DormBedsController extends Controller
         return showMsg('获取成功',200,$list);
     }
 
-    /*
+    /**
      * 床位详情
      */
     public function detail(Request $request){
@@ -101,7 +102,7 @@ class DormBedsController extends Controller
         return showMsg('获取成功',200,$list);
     }
 
-    /*
+    /**
      * 调宿
      * @param bedsid int 床位id
      * @param idnum int 学员学号
@@ -162,7 +163,7 @@ class DormBedsController extends Controller
         }
     }
 
-    /*
+    /**
      * 删除学员,退宿
      */
     public function del(Request $request){
@@ -190,7 +191,7 @@ class DormBedsController extends Controller
         }
     }
 
-    /*
+    /**
      * 批量退宿获取人员列表
      * @param buildid int 宿舍楼
      * @param floornum int 楼层
@@ -224,5 +225,26 @@ class DormBedsController extends Controller
             ->with('student')
             ->paginate($pagesize);
         return showMsg('获取成功',200,$list);
+    }
+
+    /**
+     * 住宿分配导入
+     * @param file excel表
+     */
+    public function import(Request $request){
+        $file = $request->file('file');
+        if(!$file){
+            return showMsg('请选择上传文件');
+        }
+        $filename = md5(time()).'.xlsx';
+        $date = date('Ymd');
+        $filePath = '/uploads/file/'.$date.'/'.$filename;
+        try{
+            Excel::import(new BedsImport($filename),$file);
+        }catch(\Exception $e){
+            return showMsg('上传失败'.$e->getMessage());
+        }
+        $res = ImportLog::where('filename',$filePath)->first();
+        return showMsg('上传成功',200,$res);
     }
 }

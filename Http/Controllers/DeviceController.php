@@ -11,6 +11,7 @@ use Illuminate\Routing\Controller;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\DB;
 use Modules\Dorm\Entities\DormitoryBuildingDevice;
+use Modules\Dorm\Entities\DormitoryElectric;
 use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Entities\DormitoryUsersGroup;
@@ -199,7 +200,7 @@ class DeviceController extends Controller
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $perArr]);
     }
 
-    /*
+    /**
      * 设备告警列表
      */
     public function alarm(Request $request){
@@ -212,7 +213,7 @@ class DeviceController extends Controller
         return showMsg('获取成功', 200, $result['data']);
     }
 
-    /*
+    /**
      * 解除设备告警
      */
     public function relieve(Request $request){
@@ -225,5 +226,36 @@ class DeviceController extends Controller
         }
         return showMsg('操作成功', 200);
 
+    }
+
+    /**
+     * 电控记录
+     * @param deviceName 设备名称
+     * @param campusname 校区名称
+     * @param college_name 院系名称
+     * @param major_name 专业名称
+     * @param class_name 班级名称
+     * @param build_name 宿舍楼
+     * @param roomnum 宿舍号
+     * @param floor 楼层
+     * @param type 电控类型
+     * @pagesize 页码
+     */
+    public function electric(Request $request){
+        $pagesize = $request->pageSize ?? 10;
+        $list = DormitoryElectric::where(function ($q) use ($request){
+                if($request->deviceName) $q->where('deviceName',$request->deviceName);
+                if($request->campusname) $q->where('campusname',$request->campusname);
+                if($request->build_name) $q->where('build_name',$request->build_name);
+                if($request->floor) $q->where('floor',$request->floor);
+                if($request->roomnum) $q->where('roomnum',$request->roomnum);
+                if($request->type) $q->where('type',$request->type);
+                if($request->college_name) $q->where('college_name',$request->college_name);
+                if($request->major_name) $q->where('major_name',$request->major_name);
+                if($request->class_name) $q->where('class_name',$request->class_name);
+            })
+            ->orderBy('id','desc')
+            ->paginate($pagesize);
+        return showMsg('成功',200,$list);
     }
 }

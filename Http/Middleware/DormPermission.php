@@ -5,6 +5,9 @@ namespace Modules\Dorm\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Validation\UnauthorizedException;
+use Modules\Dorm\Entities\DormitoryAuthGroup;
+use Modules\Dorm\Entities\DormitoryAuthRule;
+use Modules\Dorm\Entities\DormitoryAuthUser;
 use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryUsersBuilding;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -36,6 +39,24 @@ class DormPermission
                 $builds = DormitoryUsersBuilding::where('idnum', $idnum)->pluck('buildid')->toArray();
             }
             RedisSet('builds-'.$idnum,$builds,7200);
+
+        }
+
+        if (in_array($request->module_role,['superadmin','dorm'])) {
+            $route = substr($request->path(),4);//去除api/
+            $roleid = DormitoryAuthUser::whereUserid(auth()->user()->id)->pluck('roleid');
+            if ($roleid) {
+                $user = DormitoryAuthGroup::whereId($roleid)->first();
+                $rules = explode(',',$user['rules']);
+                $list = DormitoryAuthRule::where(['disable' => 0])->whereIn('id', $rules)->get()->toArray();
+
+            }
+
+            if($user['rules'] != "*") { //超管任何权限
+                if (!in_array($route, $list)) {
+                    return showMsg('无权操作', 403);
+                }
+            }
 
         }
         return $next($request);

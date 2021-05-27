@@ -115,6 +115,7 @@ class DormController extends Controller
                 return showMsg('缺少必要参数');
             }
         }
+        $gid = $vid = ''; //访客组和用户组
         DB::beginTransaction();
         try{
             $users = [];
@@ -133,7 +134,7 @@ class DormController extends Controller
                         $value = array_merge(['idnum'=>$value], $build);
                     }, $build);
                     DormitoryUsersBuilding::insert($users);
-                    Teacher::whereIn('idnum',$users)->update(['type'=>2]); //身份改为宿管
+                    Teacher::whereIn('idnum',array_column($users,'idnum'))->update(['type'=>2]); //身份改为宿管
                 }
             }
             if ($type ==  DormitoryGroup::GROUPTYPE) {
@@ -153,8 +154,14 @@ class DormController extends Controller
                 $blackId = env("LIKEGROUP_BLACKID") ?? 3;
                 //添加员工组
                 $res = $this->senselink->linkgroup_add($request->title, 1);
+                if($res['code']==200){
+                    $gid = $res['data']['id'];
+                }
                 //添加访客组
                 $visitorRes = $this->senselink->linkgroup_add($request->title, 2);
+                if($visitorRes['code']==200){
+                    $vid = $visitorRes['data']['id'];
+                }
                 if (isset($res['data']) && isset($res['data']['id']) && isset($visitorRes['data']['id'])  && isset($visitorRes['data'])) {
                     $upArr = [
                         'groupid'           => $res['data']['id'],
@@ -180,11 +187,11 @@ class DormController extends Controller
                         if ($request->deviceIds) {
                             $upArrD = ['groupid' => $res['data']['id'], 'grouptype' => 1];
                             array_walk($devicesB, function (&$value, $key, $upArrD) {
-                                $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'name' => $value['name']], $upArrD);
+                                $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrD);
                             }, $upArrD);
                             $upArrDs = ['groupid' => $visitorRes['data']['id'], 'grouptype' => 2];
                             array_walk($devicesC, function (&$value, $key, $upArrDs) {
-                                $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'name' => $value['name']], $upArrDs);
+                                $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrDs);
                             }, $upArrDs);
                             $devices = array_merge_recursive($devicesB, $devicesC);
                             DormitoryBuildingDevice::insert($devices);
@@ -198,8 +205,13 @@ class DormController extends Controller
                     return showMsg('操作成功',200);
                 } else {
                     DB::rollBack();
+                    //同步删除link组
+                    if($gid)  $this->senselink->linkgroup_del($gid);
+                    if($vid)  $this->senselink->linkgroup_del($vid);
                     return showMsg('添加失败');
                 }
+            }else{
+                throw new \Exception('添加失败');
             }
         }catch(\Exception $e) {
             DB::rollBack();
@@ -264,11 +276,11 @@ class DormController extends Controller
                     $devices_Ids = implode(',', array_column($devicesB, 'id'));
                     $upArrD = ['groupid' => $info['groupid'], 'grouptype' => 1];
                     array_walk($devicesB, function (&$value, $key, $upArrD) {
-                        $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'name' => $value['name']], $upArrD);
+                        $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrD);
                     }, $upArrD);
                     $upArrDs = ['groupid' => $info['visitor_groupid'], 'grouptype' => 2];
                     array_walk($devicesC, function (&$value, $key, $upArrDs) {
-                        $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'name' => $value['name']], $upArrDs);
+                        $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrDs);
                     }, $upArrDs);
                     $devices = array_merge_recursive($devicesB, $devicesC);
                     DormitoryBuildingDevice::insert($devices);

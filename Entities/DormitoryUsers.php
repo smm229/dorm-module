@@ -2,9 +2,12 @@
 
 namespace Modules\Dorm\Entities;
 
+use App\Models\Teacher;
 use App\Traits\SerializeDate;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -55,5 +58,10 @@ class DormitoryUsers extends Authenticatable implements JWTSubject {
     {
         return ['role' => 'dorm'];
     }
+
+    public function role(){
+        return $this->belongsToMany(DormitoryAuthGroup::class,'dormitory_auth_user','userid','roleid');
+    }
+
 
 }

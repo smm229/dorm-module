@@ -6,9 +6,11 @@ use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Modules\Dorm\Entities\DormitoryLoginlog;
 use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Http\Requests\LoginValidate;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Zhuzhichao\IpLocationZh\Ip;
 
 class AuthController extends Controller
 {
@@ -38,6 +40,21 @@ class AuthController extends Controller
 
         if($token = $this->guard()->attempt($credentials)){
             $user->remember_token = $token;
+            //增加登录日志
+            $ip =  $request->getClientIp();
+            $city =  Ip::find($ip);
+            if($city[2] == ""){
+                $city[2] = '本机地址';
+            }
+
+            $data = [
+                'city' => $city[2],
+                'idnum'=> $user->idnum,
+                'ip'=>$ip,
+                'username'=>$user->username
+            ];
+            DormitoryLoginlog::insert($data);
+
             return showMsg('登录成功',200,$user);
         }
 

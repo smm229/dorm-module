@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Log;
 use Excel;
 use Modules\Dorm\Entities\DormitoryAccessRecord;
+use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryNoBackRecord;
 use Modules\Dorm\Entities\DormitoryNoRecord;
 use Modules\Dorm\Entities\DormitoryStayrecords;
@@ -24,6 +25,12 @@ class DormHistoryController extends Controller
      * @param username string 姓名
      * @param idnum string 学号
      * @param grade string 年级
+     * @param start_date string 开始时间
+     * @param end_date string 结束时间
+     * @param buildName 楼宇名称
+     * @param collegeName 学院
+     * @param majorName 专业
+     * @param className 班级
      */
     public function lists(Request $request){
         $pagesize = $request->pageSize ?? 10;
@@ -31,6 +38,13 @@ class DormHistoryController extends Controller
                 if($request->username) $q->whereUsername($request->username);
                 if($request->idnum) $q->whereIdnum($request->idnum);
                 if($request->grade) $q->where('gradeName',$request->grade);
+                if($request->buildName) $q->where('buildName',$request->buildName);
+                if($request->start_date) $q->where('created_at','>=',$request->start_date);
+                if($request->end_date) $q->where('created_at','<=',$request->end_date);
+                if($request->campusname) $q->where('campusname',$request->campusname);
+                if($request->collegeName) $q->where('collegeName',$request->collegeName);
+                if($request->majorName) $q->where('majorName',$request->majorName);
+                if($request->className) $q->where('className',$request->className);
             })
             ->orderBy('id','desc')
             ->paginate($pagesize);
@@ -221,26 +235,65 @@ class DormHistoryController extends Controller
      * 未归记录
      * @paran  username  string 姓名
      * @param idnum string  学号
+     * @param campusname string  校区
+     * @param college_name string  学院
      * @param start_date 开始日期
      * @param end_date 开始日期
+     * @param buildid 宿舍楼
      */
     public function noBack(Request $request){
         $pagesize = $request->pageSize ?? 10;
-        $start_date = $request->start_date ?? date('Y-m-d');
-        $end_date = $request->end_date ?? date('Y-m-d');
         $idnum = auth()->user()->idnum;
         $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $list = DormitoryNoBackRecord::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
+                if($request->campusname) $q->where('campusname',$request->username);
+                if($request->college_name) $q->where('college_name',$request->username);
                 if($request->username) $q->whereUsername($request->username);
                 if($request->idnum) $q->whereIdnum($request->idnum);
                 if($request->college_name) $q->where('college_name',$request->college_name);
+                if($request->start_date && $request->end_date){
+                    $q->whereBetween('date',[$request->start_date,$request->end_date]);
+                }elseif($request->start_date){ //只存在开始日期
+                    $q->where('date','>=',$request->start_date);
+                }elseif($request->end_date){
+                    $q->where('date','<=',$request->end_date);
+                }
             })
-            ->whereBetween('date',[$start_date,$end_date])
+
             ->whereType(1)
             ->paginate($pagesize);
-
-        return showMsg('获取成功',200,$list);
+        //未归人数统计最近30天的数据
+        if($request->start_date && $request->end_date){
+            $begin_date =  $request->start_date;
+            $end_date = $request->end_date;
+        }elseif($request->start_date){
+            $begin_date = $request->start_date;
+            $end_date = date('Y-m-d');
+        }elseif($request->end_date){
+            $begin_date = date('Y-m-d',strtotime('-29 day',strtotime($request->end_date)));
+            $end_date = $request->end_date;
+        }else{
+            $begin_date = date('Y-m-d', strtotime("-29 day"));
+            $end_date = date('Y-m-d');
+        }
+        $limit_day = intval(round((strtotime($end_date)-strtotime($begin_date))/86400));
+        $skip = 1; //默认间隔1天
+        if($limit_day>30){ //相差》30天
+            $skip = intval(round($limit_day/30));//间隔天数
+        }
+        $max = intval(round($limit_day/$skip));
+        $dates = $value = [];
+        $j = 0;
+        for($i=$max;$i>=0;$i--){
+            $tap = $skip*$i;
+            $date=date('Y-m-d', strtotime("-$tap day",strtotime($end_date)));
+            $key=date('m/d', strtotime("-$tap day",strtotime($end_date)));
+            $dates[$j] = $key;
+            $value[$j] = DormitoryNoBackRecord::where('date',$date)->where('type',1)->whereIn('buildid',$buildids)->count();
+            $j++;
+        }
+        return showMsg('获取成功',200,$list,['date'=>$dates,'value'=>$value]);
     }
 
     /**
