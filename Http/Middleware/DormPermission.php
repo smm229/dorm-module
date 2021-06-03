@@ -43,13 +43,20 @@ class DormPermission
         }
 
         if (in_array($request->module_role,['superadmin','dorm'])) {
+
             $route = substr($request->path(),4);//去除api/
+            $DormitoryAuthRule =  DormitoryAuthRule::where('url',$route)->first();
+            //按钮权限跳出
+            if($DormitoryAuthRule){
+                if($DormitoryAuthRule['type'] == 2){
+                    return $next($request);
+                }
+            }
             $roleid = DormitoryAuthUser::whereUserid(auth()->user()->id)->pluck('roleid');
             if ($roleid) {
                 $user = DormitoryAuthGroup::whereId($roleid)->first();
                 $rules = explode(',',$user['rules']);
-                $list = DormitoryAuthRule::where(['disable' => 0])->whereIn('id', $rules)->get()->toArray();
-
+                $list = DormitoryAuthRule::where(['disable' => 0])->whereIn('id', $rules)->pluck('url')->toArray();;
             }
 
             if($user['rules'] != "*") { //超管任何权限

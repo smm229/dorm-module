@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 
 //宿舍相关api
 
-
+//Route::post('/dormitory/test', 'AuthController@test');//测试
 Route::post('/dormitory/auth/login', 'AuthController@login');//登录
 
 Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],function ($api){ //'domain' => 'dorm.hnrtxx.com','middleware'=>'refresh'
@@ -89,7 +89,8 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],f
             $apione->post('add', 'AdminController@create');//添加管理员
             $apione->post('edit', 'AdminController@edit');//修改管理员
             $apione->post('del', 'AdminController@del');//删除管理员
-            $apione->post('getLog', 'AdminController@getAadminlog');//管理员操作日志
+            $apione->post('getLog', 'AdminController@getAdminlog');//管理员操作日志
+            $apione->post('getLogid', 'AdminController@getAdminlogId');//指定管理员操作日志
             $apione->post('lists', 'AdminController@lists');//获取管理员列表
             $apione->post('editstatus', 'AdminController@editstatus');//禁用or开放管理员
             $apione->post('binddorm', 'AdminController@bindDorm');//绑定宿舍
@@ -149,12 +150,12 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],f
             $api->post('authgroup/edit', 'AuthGroupController@edit'); //角色组修改
             $api->post('authgroup/del', 'AuthGroupController@del'); //角色组删除
             $api->post('authgroup/info', 'AuthGroupController@info'); //修改详情
-            $api->post('authgroup/menulist', 'AuthGroupController@menulist'); //修改详情
+            $api->post('authgroup/menulist', 'AuthGroupController@menulist'); //当前用户可查看菜单
         });
 
         //登录日志
         $api->group(['prefix'=>'log'],function ($api){
-            $api->post('list', 'LoginLogController@lists'); //菜单规则列表
+            $api->post('list', 'LoginLogController@lists'); //登录日志列表
         });
 
 

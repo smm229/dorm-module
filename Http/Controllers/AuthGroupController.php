@@ -99,17 +99,15 @@ class AuthGroupController extends Controller{
             return $this->response->error('权限不足，不可修改超管',201);
         }
 
-        if(!$request->rolename){
-            return $this->response->error('角色名称必填',201);
-        }
-
-        $result = DormitoryAuthGroup::where('rolename', $request->rolename)->first();
-        if ($result && $result->id != $request->id) {
-            return $this->response->error('应用名称重复',201);
-        }
+//        if(!$request->rolename){
+//            return $this->response->error('角色名称必填',201);
+//        }
+//        $result = DormitoryAuthGroup::where('rolename', $request->rolename)->first();
+//        if ($result && $result->id != $request->id) {
+//            return $this->response->error('应用名称重复',201);
+//        }
 
         $data = $request->only('rolename', 'describe','isall');
-
         if ($created_person) {
             $data['created_person'] = $created_person;
         }
@@ -230,7 +228,7 @@ class AuthGroupController extends Controller{
         }else{
             $rules = explode(',',$user['rules']);
             $list = DormitoryAuthRule::where(['type' => 1, 'disable' => 0])->whereIn('id', $rules)->orderBy('sort', 'asc')->get()->toArray();
-
+            $list = listToTree($list);
         }
 
         return $this->response->array(['status_code' => 200, 'message'=> '成功','data' => $list]);

@@ -48,7 +48,10 @@ class AdminController extends Controller
                 }
             }
         }
-
+        $arr = ['created_person'=>auth()->user()->username];
+        array_walk($results, function (&$value, $key,$arr ) {
+            $value = array_merge($value, $arr);
+        }, $arr);
         try {
             $data = [];
             DB::transaction(function () use ($results, &$data, $request) {
@@ -74,15 +77,7 @@ class AdminController extends Controller
      * 获取管理员列表
      */
     public function lists(Request $request) {
-        $res = DormitoryUsers::leftjoin('personnel_teacher','personnel_teacher.idnum','=','dormitory_users.idnum')
-            ->select('dormitory_users.*')
-            ->where(function ($req) use ($request){
-                if($request->campusid) $req->where('personnel_teacher.campusid',$request->campusid);
-                if($request->departmentid) $req->where('personnel_teacher.departmentid',$request->departmentid);
-                if($request->position) $req->where('personnel_teacher.position',$request->position);
-                if($request->idnum) $req->where('personnel_teacher.idnum',$request->idnum);
-                if ($request->username) $req->where('username', $request->username);
-            })
+        $res = DormitoryUsers::with('role')
             ->orderBy('id', 'desc')
             ->paginate($request['pageSize']);
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
@@ -115,7 +110,7 @@ class AdminController extends Controller
         if (!$request->id || !$request->roleid){
             return showMsg('缺少参数');
         }
-        $data = $request->only('id', 'password', 'roleid');
+        $data = $request->only('id', 'roleid');
 
         $info = DormitoryUsers::whereId($data['id'])->first();
         if (!$info) {
@@ -125,17 +120,16 @@ class AdminController extends Controller
 
             DB::transaction(function () use ($data){
                 $list = [];
-                if(isset($data['password'])) $list['password'] = bcrypt($data['password']);
-                DormitoryUsers::whereId($data['id'])->update($list);
+//                if(isset($data['password'])) $list['password'] = bcrypt($data['password']);
+//                DormitoryUsers::whereId($data['id'])->update($list);
                 DormitoryAuthUser::where('userid', $data['id'])->delete();
                 DormitoryAuthUser::insertGetId(['userid' => $data['id'], 'roleid' => $data['roleid']]);
-                });
+            });
 
             return $this->response->array(['status_code' => 200, 'message'=> '成功']);
         }catch(\Exception $e){
             return $this->response->error('失败',201);
         }
-
     }
 
     /**
@@ -262,13 +256,56 @@ class AdminController extends Controller
      * 管理员操作日志
      * @param Request $request
      */
-    public function getAadminlog(Request $request){
-        if (!$request['idnum']) {
-            return $this->response->error('参数错误',201);
+    public function getAdminlog(Request $request){
+
+        $res = DormitoryAdminlog::where(function ($req) use ($request){
+            //模糊查询
+            $title = false;
+            if ($request['search']) {
+                $search = $request['search'];
+                if (is_numeric($search)) {
+                    $title = 'idnum';
+                } else {
+                    $title = 'username';
+                }
+            }
+            if ($title) $req->where($title, 'like', "%$search%");
+
+            if($request['start_date']) $req->where('created_at','>=',$request['start_date']);
+            if($request['end_date']) $req->where('created_at','<=',$request['end_date']);
+        })->orderBy('id','desc')->paginate($request['pageSize']);
+
+        if (!$res) {
+            return $this->response->error('获取失败',201);
         }
-        $res = DormitoryAdminlog::where('idnum',$request['idnum'])->orderBy('id','desc')->paginate($request['pageSize']);
+
+        foreach ($res as $k =>$v){
+            $res[$k]['group'] = DB::table('dormitory_auth_user')
+                ->join('dormitory_auth_group','dormitory_auth_group.id','=','dormitory_auth_user.roleid')
+                ->where('dormitory_auth_user.userid',$v['user_id'])
+                ->value('dormitory_auth_group.rolename');
+
+        }
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
     }
 
 
+    /**
+     * 获取指定管理员的操作日志
+     * @param Request $request
+     */
+    public function getAdminlogId(Request $request){
+
+        if(!$request['idnum']){
+            return $this->response->error('参数不能为空',201);
+        }
+
+        $res = DormitoryAdminlog::where('idnum',$request['idnum'])
+            ->orderBy('id','desc')
+            ->paginate($request['pageSize']);
+        if (!$res) {
+            return $this->response->error('获取失败',201);
+        }
+        return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
+    }
 }
