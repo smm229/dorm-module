@@ -15,5 +15,21 @@ class DormitoryBuildingDevice extends Model
 
     protected $table = 'dormitory_building_device';
 
+    protected $appends = ['type_id','type_name'];
 
+    public function getTypeIdAttribute(){
+        return $this->type;
+    }
+
+    public function getTypeNameAttribute(){
+      if($this->type == 2){
+          return "摄像头";
+      }else{
+          return "门禁控制板";
+      }
+    }
+
+    public function build(){
+        return $this->belongsTo(DormitoryGroup::class,'groupid','groupid');
+    }
 }

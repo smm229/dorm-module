@@ -2,6 +2,7 @@
 
 namespace Modules\Dorm\Entities;
 
+use App\Models\Campus;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Traits\SerializeDate;
@@ -18,8 +19,11 @@ class DormitoryGroup extends Model
 
     protected $table = "dormitory_group";
 
-    protected $appends = ['total_room','total_beds','total_person','total_empty_beds','buildtype_name', 'allin_person', 'devices'];
+    protected $appends = ['total_room','total_beds','total_person','total_empty_beds','buildtype_name', 'allin_person', 'devices','campusname'];
 
+    public function getCampusnameAttribute(){
+        return Campus::whereId($this->campusid)->value('name');
+    }
     //全部房间
     public function getTotalRoomAttribute(){
         return DormitoryRoom::where('buildid',$this->id)->count();

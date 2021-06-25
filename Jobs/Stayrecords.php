@@ -158,14 +158,12 @@ class Stayrecords implements ShouldQueue
                 file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--批量解除组关系，退宿用户id：' . $senselink_id . PHP_EOL, FILE_APPEND);
                 if ($senselink_id) {
                     Queue::push(new SyncLink($senselink_id, $v['buildid'], 2));
-                    return true;
                 }
             }catch(\Exception $e){
                 file_put_contents(storage_path('logs/stayrecords.log'), date('Y-m-d H:i:s') . '队列--Stayrecords--批量退宿解除关系失败用户学号：'.$v['idnum']  . PHP_EOL, FILE_APPEND);
-                return false;
             }
         }
-
+        return true;
     }
 
 }

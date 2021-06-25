@@ -59,6 +59,8 @@ composer require smm229/dorm-module
         \Modules\Dorm\Console\Reckon::class,
         //推送模板消息
         Modules\Dorm\Console\WechatPush::class,
+        //更新星云脚本
+        \Modules\Dorm\Console\NebulaRefresh::class,
     ];
     .....
     protected function schedule(Schedule $schedule)
@@ -68,6 +70,7 @@ composer require smm229/dorm-module
          $schedule->command('record_info')->everyTenMinutes();//10分钟执行
          $schedule->command('reckon')->everyTenMinutes();//10分钟执行
          $schedule->command('wechat_push')->dailyAt("07:00");//早上七点执行
+         $schedule->command('nebula_refresh')->dailyAt("00:05");//第5分钟执行
     }
 ```
 5、添加crontab计划任务<br/>

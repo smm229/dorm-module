@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
 
 //Route::post('/dormitory/test', 'AuthController@test');//测试
 Route::post('/dormitory/auth/login', 'AuthController@login');//登录
-
+Route::get('/dormitory/device/status/edit', 'DeviceController@shStatusEdit'); //星云摄像头是否在线
 Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],function ($api){ //'domain' => 'dorm.hnrtxx.com','middleware'=>'refresh'
     //导出
     $api->get('buildings/export', 'DormController@export'); //宿舍楼导出
@@ -28,6 +28,9 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],f
     $api->get('history/access/later/export',       'DormHistoryController@later_export'); //导出晚归记录
     $api->get('history/access/no_back/export',       'DormHistoryController@no_back_export'); //导出未归记录
     $api->get('history/access/no_record/export',       'DormHistoryController@no_record_export'); //导出多天无记录
+
+    //获取校区
+    $api->post('campus', 'CampusController@campus');//校区列表
 
     $api->group(['middleware'=>['DormPermission']],function ($api) {  //权限管理
         //楼宇
@@ -73,6 +76,7 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],f
             $api->post('noBack', 'DormHistoryController@noBack');//未归记录
             $api->post('noRecord', 'DormHistoryController@noRecord');//多日无记录
             $api->post('strange/record',    'DormHistoryController@strange');//陌生人识别记录
+            $api->post('strange/export',    'DormHistoryController@strangeExport');//导出陌生人识别记录
 
         });
 
@@ -103,12 +107,16 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],f
         //设备相关
         $api->group(['prefix' => 'device'], function ($apione) {
             $apione->post('lists', 'DeviceController@lists');//获取设备列表
+            $apione->post('nebula', 'DeviceController@getNebula');//获取网关列表
+            $apione->post('camera/list', 'DeviceController@getCameraList');//获取设备列表
+            $apione->post('type/list', 'DeviceController@typeList');//设备类型
+            $apione->post('add', 'DeviceController@add');//添加设备
             $apione->post('alarm/lists', 'DeviceController@alarm');//获取设备告警列表
             $apione->post('alarm/relieve', 'DeviceController@relieve');//解除设备告警
             $apione->post('info', 'DeviceController@info');//获取设备的详情
             $apione->post('delete', 'DeviceController@delete');//删除设备
             $apione->post('edit', 'DeviceController@edit');//编辑设备
-            $apione->post('getpersonbydevice', 'DeviceController@getPersonByDevice');//编辑设备
+            $apione->post('getpersonbydevice', 'DeviceController@getPersonByDevice');//人员信息
             $apione->post('electric', 'DeviceController@electric');//电控列表
         });
 
@@ -120,6 +128,9 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],f
             $apione->post('list',  'VisitController@lists');//访客列表
             $apione->post('logss', 'VisitController@logss');//访客通行记录
             $apione->post('state', 'VisitController@state');//批量审核
+
+            $apione->post('export', 'VisitController@export');//访客导出
+            $apione->post('log/export', 'VisitController@logExport');// 访问识别记录导出
         });
 
         //权限组相关
@@ -133,8 +144,22 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],f
 
         //黑名单
         $api->group(['prefix' => 'black'], function ($apione) {
+            $apione->post('list',  'DormBlackController@lists');    //黑名单列表
             $apione->post('add',  'DormBlackController@add');    //添加黑名单
+            $apione->post('info',  'DormBlackController@info');    //黑名单详情
+            $apione->post('edit',  'DormBlackController@edit');    //修改黑名单
+            $apione->post('del',  'DormBlackController@delete');    //删除黑名单
+            $apione->post('export',  'DormBlackController@export');    //导出黑名单
+            $apione->post('blacklist/user', 'DormBlackController@blacklist');  //教职工、学生、维修工、访客、社会人员基本信息
+            $apione->post('blacklist/category',  'DormBlackController@blacklistCategory');    //获取黑名单类型、原因、等级
+            $apione->post('blacklist/add',  'DormBlackController@categoryAdd');    //添加黑名单类型、原因、等级
+            $apione->post('blacklist/edit',  'DormBlackController@categoryEdit');    //修改黑名单类型、原因、等级
+            $apione->post('blacklist/del',  'DormBlackController@categoryDel');    //删除黑名单类型、原因、等级
+
+            $apione->post('access/record',  'DormBlackController@accessRecord');    //黑名单识别记录
+            $apione->post('access/export',  'DormBlackController@accessExport');    //黑名单识别记录导出
         });
+
         //菜单规则
         $api->group(['prefix'=>'auth'],function ($api){
             $api->post('authrule/list', 'AuthRuleController@lists'); //菜单规则列表
@@ -158,7 +183,12 @@ Route::group(['prefix'=>'dormitory','middleware'=>['refresh:dorm','AdminLog']],f
             $api->post('list', 'LoginLogController@lists'); //登录日志列表
         });
 
-
+        //非法通行
+        $api->group(['prefix'=>'warning'],function ($api){
+            $api->post('list', 'WarningRecordController@lists'); //非法通行列表
+            $api->post('export', 'WarningRecordController@export'); //非法通行导出
+            $api->post('getVideo', 'WarningRecordController@getVideo'); //获取视频地址
+        });
     });
 
     //星云设备

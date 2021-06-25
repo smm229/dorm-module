@@ -32,9 +32,10 @@ class DormBlackValidate extends FormRequest
     public function rules()
     {
         return [
+            'type'           => 'required|int',
             'headimg'        => 'required',
-            'username'         => 'required',
-            'sex'             => 'required|int'
+            'username'       => 'required',
+            'sex'            => 'required|int'
         ];
     }
 
@@ -43,6 +44,8 @@ class DormBlackValidate extends FormRequest
         return [
             'headimg.required'         =>  '请添加人脸',
             'username.required'        =>  '请输入姓名',
+            'type.required'            =>  '请选择类型',
+            'type.int'                 =>  '类型格式错误',
             'sex.required'             =>  '请选择性别',
             'sex.int'                  =>  '性别格式错误'
         ];

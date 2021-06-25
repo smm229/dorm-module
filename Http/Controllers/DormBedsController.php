@@ -57,6 +57,7 @@ class DormBedsController extends Controller
      * @param buildid int 宿舍楼id
      * @param floornum int 楼层
      * @param roomnum 房间号
+     * @param campusid 校区id
      */
     public function lists(Request $request){
         $pagesize = $request->pageSize ?? 12;
@@ -73,7 +74,7 @@ class DormBedsController extends Controller
                         $query->from('dormitory_beds')->whereRaw('dormitory_room.id = dormitory_beds.roomid')->whereNull('idnum');
                     });
                 }
-
+                if($request->campusid) $q->where('campusid',$request->campusid);
                 if($request->buildid) $q->where('buildid',$request->buildid);
                 if($request->floornum) $q->where('floornum',$request->floornum);
                 //房间号
@@ -183,11 +184,11 @@ class DormBedsController extends Controller
                 file_put_contents(storage_path('logs/stayrecords.log'),'Stayrecords--准备分配数据'.json_encode($beds).PHP_EOL,FILE_APPEND);
                 //退宿记录
                 Queue::push(new Stayrecords($beds,3,0));
-                return showMsg('删除成功', 200);
+                return showMsg('退宿成功', 200);
             }
-            return showMsg('删除失败', 201);
+            return showMsg('退宿失败', 201);
         }catch(\Exception $e) {
-            return showMsg('删除失败'.$e->getMessage());
+            return showMsg('退宿失败');
         }
     }
 
@@ -220,7 +221,7 @@ class DormBedsController extends Controller
 
             })
             ->whereHas('student', function($q) use ($request){
-                if($request->username) $q->where('username',$request->username);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
             })
             ->with('student')
             ->paginate($pagesize);

@@ -18,7 +18,7 @@ class NebulaController extends Controller
 
     public function __construct()
     {
-        $this->nebula = new SenseNebula();
+        $this->nebula = new SenseNebula(env('SENSE_NEBULA_HOST'));
     }
 
     public function PersonPackageList(Request $request){

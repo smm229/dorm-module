@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Dorm\Entities\DormitoryAccessRecord;
 use Modules\Dorm\Entities\DormitoryBeds;
 use Modules\Dorm\Entities\DormitoryBlackAccessRecord;
+use Modules\Dorm\Entities\DormitoryBuildingDevice;
 use Modules\Dorm\Entities\DormitoryConfig;
 use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryGuestAccessRecord;
@@ -52,7 +53,7 @@ class InformationController extends Controller
         //入住率
         $data['stay_percrent'] = $data['total_bed'] ? sprintf("%.1f",($data['total_bed']-$data['no_stay'])*100/$data['total_bed']) : '0';
         //设备在线率
-        $senselink = new \senselink();
+        /*$senselink = new \senselink();
         $res = $senselink->linkdevice_list('',1,2000);
         $online = $offline = $total_device = 0;
         if($res['code']==200 && !empty($res['data'])){
@@ -67,11 +68,15 @@ class InformationController extends Controller
                     }
                 }
             }
-        }
-        $data['total_device'] = $total_device;//总设备
-        $data['online_device'] = $online;//在线
-        $data['offline_device'] = $offline;//离线
-        $data['online_percent'] = $total_device==0 ? '0' : sprintf("%.1f",$online*100/$total_device);
+        }*/
+        $link_online = DormitoryBuildingDevice::where('status',1)->where('type',1)->groupBy('senselink_sn')->get();
+        $other_online = DormitoryBuildingDevice::where('status',1)->where('type','>',1)->count();
+        $link_offline = DormitoryBuildingDevice::where('status',2)->where('type',1)->groupBy('senselink_sn')->get();
+        $other_offline = DormitoryBuildingDevice::where('status',2)->where('type','>',1)->count();
+        $data['total_device'] = count($link_online)+$other_online+count($link_offline)+$other_offline;//总设备
+        $data['online_device'] = count($link_online)+$other_online;//在线
+        $data['offline_device'] = count($link_offline)+$other_offline;//离线
+        $data['online_percent'] = $data['total_device']==0 ? '0' : sprintf("%.1f",$data['online_device']*100/$data['total_device']);
         //归寝率
         $data['student'] = Student::count();
         $data['student_back'] = DormitoryBeds::where('is_in',1)->count(); //在宿舍
@@ -115,6 +120,7 @@ class InformationController extends Controller
      * 实时查寝
      * @param buildid int 楼宇id
      * @param floornum int 楼层
+     * @param campusid int 校区id
      */
     public function realtime(Request $request){
         $pagesize = $request->pageSize ?? 15;
@@ -123,6 +129,7 @@ class InformationController extends Controller
         $idnum = auth()->user() ? auth()->user()->idnum : '';
 
         $list = DormitoryRoom::where(function ($q) use ($request,$uid,$idnum) {
+                if ($request->campusid) $q->where('campusid',$request->campusid);
                 if ($request->buildid) $q->where('buildid', $request->buildid);
                 if ($request->floornum) $q->where('floornum', $request->floornum);
                 //按照楼栋筛选

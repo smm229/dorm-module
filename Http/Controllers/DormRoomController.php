@@ -63,14 +63,15 @@ class DormRoomController extends Controller
         return showMsg('获取成功',200,$list);
     }
 
-    /*
-     * 添加宿舍
+   /**
+    * 添加宿舍
     * @param roomnum 房间号
     * @param buildtype 楼宇类型id
     * @param floornum 楼层
     * @param bedsnum 床位数
     * @param buildid 楼宇id
-     */
+    * @param campusid 校区id
+    */
     public function add(DormitoryRoomValidate $request){
         try{
             $build = DormitoryGroup::find($request->buildid);
@@ -78,6 +79,7 @@ class DormRoomController extends Controller
                 throw new \Exception('楼宇不存在或楼层错误');
             }
             if(DormitoryRoom::where([
+                'campusid' => $request->campusid,
                 'roomnum'=>$request->roomnum,
                 'floornum'=>$request->floornum,
                 'buildid'=>$request->buildid
@@ -87,6 +89,7 @@ class DormRoomController extends Controller
             DB::transaction(function () use ($request){
                 //房间
                 $roomid = DormitoryRoom::insertGetId([
+                    'campusid'        =>  $request->campusid,
                     'roomnum'         =>  $request->roomnum,
                     'buildtype'       =>  $request->buildtype,
                     'floornum'        =>  $request->floornum,
@@ -96,6 +99,7 @@ class DormRoomController extends Controller
                 //床位
                 for($i=1;$i<=$request->bedsnum;$i++) {
                     $arr = [
+                        'campusid' =>  $request->campusid,
                         'buildid' => $request->buildid,
                         'roomid' => $roomid,
                         'room_num'=>$request->roomnum,
@@ -131,6 +135,7 @@ class DormRoomController extends Controller
             DB::transaction(function () use ($request){
                 for($j=$request->start;$j<=$request->end;$j++) {
                     if (DormitoryRoom::where([
+                        'campusid' =>  $request->campusid,
                         'roomnum' => $j,
                         'floornum' => $request->floornum,
                         'buildid' => $request->buildid
@@ -140,6 +145,7 @@ class DormRoomController extends Controller
                     }
                     //房间
                     $roomid = DormitoryRoom::insertGetId([
+                        'campusid'  =>  $request->campusid,
                         'roomnum' => $j,
                         'buildtype' => $request->buildtype,
                         'floornum' => $request->floornum,
@@ -149,6 +155,7 @@ class DormRoomController extends Controller
                     //床位
                     for ($i = 1; $i <= $request->bedsnum; $i++) {
                         $arr = [
+                            'campusid' =>  $request->campusid,
                             'buildid' => $request->buildid,
                             'roomid' => $roomid,
                             'room_num'=>$j,
@@ -183,6 +190,7 @@ class DormRoomController extends Controller
                 throw new \Exception('信息不存在');
             }
             if(DormitoryRoom::where([
+                    'campusid' =>  $request->campusid,
                     'roomnum'=>$request->roomnum,
                     'floornum'=>$request->floornum,
                     'buildid'=>$request->buildid
@@ -192,6 +200,7 @@ class DormRoomController extends Controller
             }
 
             DB::transaction(function () use ($request,$info){
+                $info->campusid       =  $request->campusid;
                 $info->roomnum        =  $request->roomnum;
                 $info->buildtype      =  $request->buildtype;
                 $info->floornum       =  $request->floornum;
@@ -203,6 +212,7 @@ class DormRoomController extends Controller
                 //新增床位
                 for($i=1;$i<=$request->bedsnum;$i++) {
                     $arr = [
+                        'campusid'        =>  $request->campusid,
                         'buildid' => $request->buildid,
                         'roomid' => $info->id,
                         'room_num'=>$info->roomnum,

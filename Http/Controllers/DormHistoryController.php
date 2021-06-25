@@ -20,7 +20,7 @@ use Modules\Dorm\Entities\DormitoryStrangeAccessRecord;
 class DormHistoryController extends Controller
 {
 
-    /*
+    /**
      * 住宿历史列表
      * @param username string 姓名
      * @param idnum string 学号
@@ -35,7 +35,7 @@ class DormHistoryController extends Controller
     public function lists(Request $request){
         $pagesize = $request->pageSize ?? 10;
         $list = DormitoryStayrecords::where(function ($q) use ($request){
-                if($request->username) $q->whereUsername($request->username);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
                 if($request->idnum) $q->whereIdnum($request->idnum);
                 if($request->grade) $q->where('gradeName',$request->grade);
                 if($request->buildName) $q->where('buildName',$request->buildName);
@@ -51,7 +51,7 @@ class DormHistoryController extends Controller
         return showMsg('成功',200,$list);
     }
 
-    /*
+    /**
      * 导出住宿历史
      */
     public function export(Request $request){
@@ -69,9 +69,16 @@ class DormHistoryController extends Controller
             'updated_at'        =>    '退宿时间'
         ]];
         $data = DormitoryStayrecords::where(function ($q) use ($request){
-                if($request->username) $q->whereUsername($request->username);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
                 if($request->idnum) $q->whereIdnum($request->idnum);
                 if($request->grade) $q->where('gradeName',$request->grade);
+                if($request->buildName) $q->where('buildName',$request->buildName);
+                if($request->start_date) $q->where('created_at','>=',$request->start_date);
+                if($request->end_date) $q->where('created_at','<=',$request->end_date);
+                if($request->campusname) $q->where('campusname',$request->campusname);
+                if($request->collegeName) $q->where('collegeName',$request->collegeName);
+                if($request->majorName) $q->where('majorName',$request->majorName);
+                if($request->className) $q->where('className',$request->className);
             })
             ->get()->toArray();
         $excel = new Export($data, $header,'住宿历史');
@@ -100,12 +107,13 @@ class DormHistoryController extends Controller
         $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $list = DormitoryAccessRecord::whereIn('buildid',$buildids)
             ->whereType($type)
-            ->whereStatus(0)
+            //->whereStatus(0)
             ->where(function ($q) use ($request){
                 if($request->begin_time) $q->where('pass_time','>=',$request->begin_time);
                 if($request->end_time) $q->where('pass_time','<=',$request->end_time);
                 if($request->idnum) $q->whereIdnum($request->idnum);
-                if($request->username) $q->whereUsername($request->username);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
+                if($request->campusname) $q->where('campusname',$request->campusname);
                 if($request->college_name) $q->where('college_name',$request->college_name);
             })
             ->orderBy('id','desc')
@@ -125,7 +133,7 @@ class DormHistoryController extends Controller
         $header = [[
             'idnum'             =>    $type==1 ? '学号' : '教职工',
             'username'          =>    '姓名',
-            'sex'          =>    '性别',
+            'sex'               =>    '性别',
             'college_name'       =>    '学院',
             'major_name'         =>    '专业',
             'grade_name'         =>    '年级',
@@ -145,7 +153,8 @@ class DormHistoryController extends Controller
                 if($request->begin_time) $q->where('pass_time','>=',$request->begin_time);
                 if($request->end_time) $q->where('pass_time','<=',$request->end_time);
                 if($request->idnum) $q->whereIdnum($request->idnum);
-                if($request->username) $q->whereUsername($request->username);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
+                if($request->campusname) $q->where('campusname',$request->campusname);
                 if($request->college_name) $q->where('college_name',$request->college_name);
             })
             ->get()
@@ -158,7 +167,7 @@ class DormHistoryController extends Controller
         return showMsg('下载失败');
     }
 
-    /*
+    /**
      * 晚归记录
      * @paran  username  string 姓名
      * @param idnum string  学号
@@ -168,20 +177,21 @@ class DormHistoryController extends Controller
      * @param college_name string 学院名称
      */
     public function later(Request $request){
-        $start_date = $request->start_date ?? date('Y-m-d');
-        $end_date = $request->end_date ?? date('Y-m-d 23:59:59');
         $idnum = auth()->user()->idnum;
         $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $pagesize = $request->pageSize ?? 10;
         $list = DormitoryAccessRecord::whereType(1)
             ->whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
-                if($request->username) $q->whereUsername($request->username);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
                 if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->campusname) $q->where('campusname',$request->campusname);
                 if($request->college_name) $q->where('college_name',$request->college_name);
+                if($request->start_date) $q->where('pass_time','>=',$request->start_date);
+                if($request->end_date) $q->where('pass_time','<=',$request->end_date.' 23:59:59');
             })
             ->whereStatus(1)
-            ->whereBetween('pass_time',[$start_date,$end_date])
+            ->orderBy('id','desc')
             ->paginate($pagesize);
         return showMsg('获取成功',200,$list);
     }
@@ -201,8 +211,9 @@ class DormHistoryController extends Controller
         $data = DormitoryAccessRecord::whereType(1)
             ->whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
-                if($request->username) $q->whereUsername($request->username);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
                 if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->campusname) $q->where('campusname',$request->campusname);
                 if($request->college_name) $q->where('college_name',$request->college_name);
             })
             ->whereStatus(1)
@@ -247,9 +258,8 @@ class DormHistoryController extends Controller
         $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $list = DormitoryNoBackRecord::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
-                if($request->campusname) $q->where('campusname',$request->username);
-                if($request->college_name) $q->where('college_name',$request->username);
-                if($request->username) $q->whereUsername($request->username);
+                if($request->campusname) $q->where('campusname',$request->campusname);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
                 if($request->idnum) $q->whereIdnum($request->idnum);
                 if($request->college_name) $q->where('college_name',$request->college_name);
                 if($request->start_date && $request->end_date){
@@ -260,8 +270,8 @@ class DormHistoryController extends Controller
                     $q->where('date','<=',$request->end_date);
                 }
             })
-
             ->whereType(1)
+            ->orderBy('id','desc')
             ->paginate($pagesize);
         //未归人数统计最近30天的数据
         if($request->start_date && $request->end_date){
@@ -300,24 +310,28 @@ class DormHistoryController extends Controller
      * 未归记录导出
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
-     * @paran  username  string 姓名
+     * @param username  string 姓名
      * @param idnum string  学号
      * @param start_date 开始日期
      * @param end_date 开始日期
      */
     public function no_back_export(Request $request){
-        $start_date = $request->start_date ?? date('Y-m-d');
-        $end_date = $request->end_date ?? date('Y-m-d');
+//        $start_date = $request->start_date ?? date('Y-m-d');
+//        $end_date = $request->end_date ?? date('Y-m-d');
         $idnum = auth()->user()->idnum;
         $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $data = DormitoryNoBackRecord::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
-                if($request->username) $q->whereUsername($request->username);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
                 if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->campusname) $q->where('campusname',$request->campusname);
                 if($request->college_name) $q->where('college_name',$request->college_name);
+                if($request->start_date) $q->where('date','>=',$request['start_date']);
+                if($request->end_date) $q->where('date','<=',$request['end_date']." 23:59:59");
             })
-            ->whereBetween('date',[$start_date,$end_date])
+         //   ->whereBetween('date',[$start_date,$end_date])
             ->whereType(1)
+            ->orderBy('date','desc')
             ->get()
             ->toArray();
         $header = [[
@@ -340,30 +354,32 @@ class DormHistoryController extends Controller
         }
         return showMsg('下载失败');
     }
-    /*
+
+    /**
      * 多日无记录人员
-     * @paran  username  string 姓名
+     * @param username  string 姓名
      * @param idnum string  学号
      * @param start_date 开始日期
      * @param end_date 开始日期
+     * @param campusname 校区
+     * @param college_name  学院
      */
     public function noRecord(Request $request){
         $pagesize = $request->pageSize ?? 10;
-        $start_date = $request->start_date ?? date('Y-m-d');
-        $end_date = $request->end_date ?? date('Y-m-d');
         $idnum = auth()->user()->idnum;
-        $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
-        $list = DormitoryNoRecord::whereIn('buildid',$buildids)
-            ->where(function ($q) use ($request){
-                if($request->username) $q->whereUsername($request->username);
-                if($request->idnum) $q->whereIdnum($request->idnum);
-                if($request->college_name) $q->where('college_name',$request->college_name);
-            })
-            ->where('begin_date','<=',$start_date)
-            ->where('end_date','>=',$end_date)
-            ->whereType(1)
-            ->paginate($pagesize);
 
+        $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
+        $list = DormitoryNoRecord::whereType(1)
+            ->where(function ($q) use ($request,$buildids){
+                if($buildids) $q->whereIn('buildid',$buildids);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
+                if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->campusname) $q->where('campusname',$request->campusname);
+                if($request->college_name) $q->where('college_name',$request->college_name);
+                if($request->start_date) $q->where('begin_date','>=',$request->start_date);
+                if($request->end_date) $q->where('end_date','<=',$request->end_date);
+            })
+            ->paginate($pagesize);
         return showMsg('获取成功',200,$list);
     }
 
@@ -377,8 +393,9 @@ class DormHistoryController extends Controller
         $buildids = $request->buildid ? [$request->buildid]: RedisGet('builds-'.$idnum);
         $data = DormitoryNoRecord::whereIn('buildid',$buildids)
             ->where(function ($q) use ($request){
-                if($request->username) $q->whereUsername($request->username);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
                 if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->campusname) $q->where('campusname',$request->campusname);
                 if($request->college_name) $q->where('college_name',$request->college_name);
             })
             ->where('begin_date','<=',$start_date)
@@ -416,6 +433,7 @@ class DormHistoryController extends Controller
     public function strange(Request $request){
         $pagesize = $request->pageSize ?? 10;
         $list = DormitoryStrangeAccessRecord::where(function ($q) use ($request){
+                if($request->campusname) $q->where('campusname',$request->campusname);
                 if($request->buildid) $q->where('buildid',$request->buildid);
                 if($request->start_date) $q->where('pass_time','>=',$request->start_date);
                 if($request->end_date) $q->where('pass_time','>=',$request->end_date.' 23:59:59');
@@ -423,5 +441,37 @@ class DormHistoryController extends Controller
             ->orderBy('id','desc')
             ->paginate($pagesize);
         return showMsg('成功',200,$list);
+    }
+
+    /**
+     * 导出陌生人记录
+     * @param Request $request
+     */
+    public function strangeExport(Request $request){
+
+        $list = DormitoryStrangeAccessRecord::where(function ($q) use ($request){
+            if($request->campusname) $q->where('campusname',$request->campusname);
+            if($request->buildid) $q->where('buildid',$request->buildid);
+            if($request->start_date) $q->where('pass_time','>=',$request->start_date);
+            if($request->end_date) $q->where('pass_time','>=',$request->end_date.' 23:59:59');
+        })->orderBy('id','desc')
+            ->get()
+            ->toArray();
+
+        $header = [[
+            'campusname'        =>  '校区',
+            'pass_location'     =>  '识别地点',
+            'pass_way'          =>  '识别通道',
+            'direction'         =>  '识别状态',
+            'analyse'           =>  '对比分析值',
+            'pass_time'         =>  '识别时间',
+        ]];
+
+        $excel = new Export($list, $header,'陌生人记录');
+        $file = 'file/'.time().'.xlsx';
+        if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
+        }
+        return showMsg('下载失败');
     }
 }

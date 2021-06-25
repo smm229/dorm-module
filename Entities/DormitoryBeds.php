@@ -2,6 +2,7 @@
 
 namespace Modules\Dorm\Entities;
 
+use App\Models\Campus;
 use App\Models\Student;
 use App\Traits\SerializeDate;
 use Illuminate\Database\Eloquent\Model;
@@ -16,8 +17,11 @@ class DormitoryBeds extends Model
 
     protected $table = 'dormitory_beds';
 
-    protected $appends = ['check_in','username','build_name','floornum']; //是否入住，学员名称,楼宇名称，房间名称
+    protected $appends = ['check_in','username','build_name','floornum','campusname']; //是否入住，学员名称,楼宇名称，房间名称
 
+    public function getCampusnameAttribute(){
+        return Campus::whereId($this->campusid)->value('name');
+    }
     //楼层
     public function getFloornumAttribute(){
         return DormitoryRoom::whereId($this->roomid)->value('floornum');

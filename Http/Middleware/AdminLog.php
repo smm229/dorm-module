@@ -94,6 +94,10 @@ class AdminLog{
             'dormitory/history/noBack'                            => '未归记录',
             'dormitory/history/noRecord'                          => '多日无记录',
             'dormitory/history/strange/record'                    => '陌生人识别记录',
+            'dormitory/history/strange/export'                    => '陌生人识别记录',
+
+            'dormitory/warning/list'                              => '非法通行记录',
+            'dormitory/warning/export'                            => '非法通行记录导出',
 
             'dormitory/information/realtime'                      => '实时查寝',
             'dormitory/information/data'                          => '综合数据',
@@ -113,12 +117,16 @@ class AdminLog{
             'dormitory/admin/getsysconfig'                        => '获取系统配置',
 
             'dormitory/device/lists'                              => '获取设备列表',
+            'dormitory/device/add'                                => '添加设备',
+            'dormitory/device/type/list'                          => '设备类型',
+            'dormitory/device/camera/list'                        => '获取设备列表',
+            'dormitory/device/nebula'                             => '获取网关列表',
             'dormitory/device/alarm/lists'                        => '获取设备告警列表',
             'dormitory/device/alarm/relieve'                      => '解除设备告警',
             'dormitory/device/info'                               => '获取设备的详情',
             'dormitory/device/delete'                             => '删除设备',
             'dormitory/device/edit'                               => '编辑设备',
-            'dormitory/device/getpersonbydevice'                  => '编辑设备',
+            'dormitory/device/getpersonbydevice'                  => '设备详情-人员信息',
             'dormitory/device/electric'                           => '电控列表',
 
             'dormitory/visit/add'                                 => '添加访客',
@@ -127,6 +135,8 @@ class AdminLog{
             'dormitory/visit/list'                                => '访客列表',
             'dormitory/visit/logss'                               => '访客通行记录',
             'dormitory/visit/state'                               => '批量审核',
+            'dormitory/visit/export'                              => '访客管理导出',
+            'dormitory/visit/log/export'                          => '访问识别记录导出',
 
             'dormitory/group/addperson'                           => '权限分配人员',
             'dormitory/group/delperson'                           => '权限分配人员',
@@ -134,7 +144,20 @@ class AdminLog{
             'dormitory/group/getunpersonlist'                     => '权限组下未人员列表',
             'dormitory/group/getdevicelist'                       => '权限组下未分组设备',
 
+            'dormitory/black/list'                                => '黑名单列表',
             'dormitory/black/add'                                 => '添加黑名单',
+            'dormitory/black/del'                                 => '删除黑名单',
+            'dormitory/black/info'                                => '黑名单详情',
+            'dormitory/black/edit'                                => '黑名单修改',
+            'dormitory/black/export'                              => '黑名单导出',
+            'dormitory/black/blacklist/category'                  => '获取黑名单类型、原因、等级',
+            'dormitory/black/blacklist/add'                       => '添加黑名单类型、原因、等级',
+            'dormitory/black/blacklist/edit'                      => '修改黑名单类型、原因、等级',
+            'dormitory/black/blacklist/del'                       => '删除黑名单类型、原因、等级',
+            'dormitory/black/blacklist/user'                      => '教职工、学生、维修工、访客、社会人员基本信息',
+
+            'dormitory/black/access/record'                       => '黑名单识别记录',
+            'dormitory/black/access/export'                       => '黑名单识别记录导出',
 
             'dormitory/auth/authrule/list'                        => '菜单规则列表',
             'dormitory/auth/authrule/add'                         => '菜单规则添加',
@@ -194,6 +217,10 @@ class AdminLog{
             'dormitory/history/noBack'                            => '未归记录',
             'dormitory/history/noRecord'                          => '多日无记录',
             'dormitory/history/strange/record'                    => '陌生人识别记录',
+            'dormitory/history/strange/export'                    => '导出陌生人识别记录',
+
+            'dormitory/warning/list'                              => '非法通行记录',
+            'dormitory/warning/export'                            => '非法通行记录',
 
             'dormitory/information/realtime'                      => '楼宇实时查寝',
             'dormitory/information/data'                          => '综合数据',
@@ -204,7 +231,7 @@ class AdminLog{
             'dormitory/admin/edit'                                => '账号权限管理',
             'dormitory/admin/del'                                 => '账号权限管理',
             'dormitory/admin/getLog'                              => '账号权限管理',
-            'dormitory/admin/getLogid'                              => '账号权限管理',
+            'dormitory/admin/getLogid'                            => '账号权限管理',
             'dormitory/admin/lists'                               => '账号权限管理',
             'dormitory/admin/editstatus'                          => '账号权限管理',
             'dormitory/admin/binddorm'                            => '绑定宿舍',
@@ -213,6 +240,10 @@ class AdminLog{
             'dormitory/admin/getsysconfig'                        => '系统参数设置',
 
             'dormitory/device/lists'                              => '设备列表',
+            'dormitory/device/add'                                => '设备列表',
+            'dormitory/device/type/list'                          => '设备列表',
+            'dormitory/device/camera/list'                        => '设备列表',
+            'dormitory/device/nebula'                             => '设备列表',
             'dormitory/device/alarm/lists'                        => '设备警告',
             'dormitory/device/alarm/relieve'                      => '设备列表',
             'dormitory/device/info'                               => '设备列表',
@@ -227,6 +258,8 @@ class AdminLog{
             'dormitory/visit/list'                                => '访客管理',
             'dormitory/visit/logss'                               => '访客管理',
             'dormitory/visit/state'                               => '访客管理',
+            'dormitory/visit/export'                              => '访客管理',
+            'dormitory/visit/log/export'                          => '访客管理',
 
             'dormitory/group/addperson'                           => '权限分配人员',
             'dormitory/group/delperson'                           => '权限分配人员',
@@ -234,7 +267,20 @@ class AdminLog{
             'dormitory/group/getunpersonlist'                     => '权限组下未人员列表',
             'dormitory/group/getdevicelist'                       => '权限组下未分组设备',
 
+            'dormitory/black/list'                                => '黑名单管理',
             'dormitory/black/add'                                 => '黑名单管理',
+            'dormitory/black/del'                                 => '黑名单管理',
+            'dormitory/black/info'                                => '黑名单管理',
+            'dormitory/black/edit'                                => '黑名单管理',
+            'dormitory/black/export'                              => '黑名单管理',
+            'dormitory/black/blacklist/category'                  => '黑名单管理',
+            'dormitory/black/blacklist/add'                       => '黑名单管理',
+            'dormitory/black/blacklist/edit'                      => '黑名单管理',
+            'dormitory/black/blacklist/del'                       => '黑名单管理',
+            'dormitory/black/blacklist/user'                      => '黑名单管理',
+
+            'dormitory/black/access/record'                       => '黑名单识别记录',
+            'dormitory/black/access/export'                       => '黑名单识别记录',
 
             'dormitory/auth/authrule/list'                        => '菜单规则',
             'dormitory/auth/authrule/add'                         => '菜单规则',

@@ -31,7 +31,7 @@ class DormController extends Controller
         $this->middleware('AuthDel')->only(['del','del_cate']);
     }
 
-    /*
+    /**
      * 调出excel
      * 暂时导出全部
      */
@@ -69,8 +69,9 @@ class DormController extends Controller
         return showMsg('下载失败');
     }
 
-    /*
+    /**
      * 宿舍楼or权限组列表
+     * @param campusid 校区id
      */
     public function lists(Request $request){
         $pagesize = $request->pageSize ?? 12;
@@ -80,6 +81,9 @@ class DormController extends Controller
             $idnum = auth()->user()->idnum;
             $buildids = RedisGet('builds-'.$idnum);
             $list = DormitoryGroup::whereType($type)
+                ->where(function ($q) use ($request){
+                    if($request->campusid) $q->where('campusid',$request->campusid);
+                })
                 ->whereIn('id',$buildids)
                 ->with(['dormitory_users' => function ($q) {
                     $q->select('dormitory_users.id', 'dormitory_users.username', 'dormitory_users.idnum');
@@ -88,22 +92,24 @@ class DormController extends Controller
         //超级管理员查看所有组列表
         if ($type == DormitoryGroup::GROUPTYPE && auth()->user()->id == 1) {
             $list = DormitoryGroup::where(function ($req) use ($request){
+                if($request->campusid) $req->where('campusid',$request->campusid);
                 if ($request['search'])  $req->where('title', 'like', '%'.$request['search'].'%');
             })->orderBy('id', 'desc')->paginate($pagesize);
         }
         return showMsg('获取成功',200, $list);
     }
 
-    /*
+    /**
      * 添加权限组or宿舍楼
      * @param title       名称
      * @param buildtype   楼宇类型id
      * @param floor       楼层
      * @param teachers    宿管老师idnum集合
      * @param $device_ids 设备id合集
+     * @param campusid 校区id
      */
     public function add(Request $request){
-        if (!$request->title) {
+        if (!$request->title || !$request->campusid) {
             return showMsg('缺少必要参数');
         }
         if(DormitoryGroup::whereTitle($request->title)->first()){
@@ -122,6 +128,7 @@ class DormController extends Controller
             if ($type == DormitoryGroup::DORMTYPE) {
                 $buildid = DormitoryGroup::insertGetId([
                     'title'         =>  $request->title,
+                    'campusid'      =>  $request->campusid,
                     'type'          =>  DormitoryGroup::DORMTYPE,
                     'buildtype'     =>  $request->buildtype,
                     'floor'         =>  $request->floor,
@@ -151,14 +158,16 @@ class DormController extends Controller
             }
             //如果添加成功，添加link到员工组，访客组，黑名单组
             if ($buildid) {
-                $blackId = env("LIKEGROUP_BLACKID") ?? 3;
+                $userId = env("LIKEGROUP_STAFF") ?? 1;
+                $visitId = env("LIKEGROUP_VISITOR") ?? 2;
+                $blackId = env("LIKEGROUP_BLACKLIST") ?? 3;
                 //添加员工组
-                $res = $this->senselink->linkgroup_add($request->title, 1);
+                $res = $this->senselink->linkgroup_add($request->title, $userId);
                 if($res['code']==200){
                     $gid = $res['data']['id'];
                 }
                 //添加访客组
-                $visitorRes = $this->senselink->linkgroup_add($request->title, 2);
+                $visitorRes = $this->senselink->linkgroup_add($request->title, $visitId);
                 if($visitorRes['code']==200){
                     $vid = $visitorRes['data']['id'];
                 }
@@ -185,11 +194,11 @@ class DormController extends Controller
                     }
                     if (isset($resD['data']) && isset($resD['data']['id']) && isset($visitorResD['data']['id'])  && isset($visitorResD['data']) && isset($blacklistResD['data']['id']) && isset($blacklistResD['data'])) {
                         if ($request->deviceIds) {
-                            $upArrD = ['groupid' => $res['data']['id'], 'grouptype' => 1];
+                            $upArrD = ['campusid'      =>  $request->campusid,'groupid' => $res['data']['id'], 'grouptype' => 1];
                             array_walk($devicesB, function (&$value, $key, $upArrD) {
                                 $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrD);
                             }, $upArrD);
-                            $upArrDs = ['groupid' => $visitorRes['data']['id'], 'grouptype' => 2];
+                            $upArrDs = ['campusid'      =>  $request->campusid,'groupid' => $visitorRes['data']['id'], 'grouptype' => 2];
                             array_walk($devicesC, function (&$value, $key, $upArrDs) {
                                 $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrDs);
                             }, $upArrDs);
@@ -219,7 +228,7 @@ class DormController extends Controller
         }
     }
 
-    /*
+    /**
     * 编辑楼宇 or 通行权限组
     * @param title 名称
     * @param buildtype 楼宇类型id
@@ -249,6 +258,7 @@ class DormController extends Controller
                 $info->buildtype  =  $request->buildtype;
                 $info->floor      =  $request->floor;
             }
+            if($request->campusid)  $info->campusid      =  $request->campusid;
             $info->title  =  $request->title;
             $info->save();
             $users = [];
@@ -266,19 +276,21 @@ class DormController extends Controller
                 Teacher::whereIn('idnum',$users)->update(['type'=>2]); //改为宿管
             }
             //编辑管辖设备，可以为空数组
-            $blackId = env("LIKEGROUP_BLACKID") ?? 3;
+            $userId = env("LIKEGROUP_STAFF") ?? 1;
+            $visitId = env("LIKEGROUP_VISITOR") ?? 2;
+            $blackId = env("LIKEGROUP_BLACKLIST") ?? 3;
             $devices_Ids = [];
             if ($request->deviceIds) {
                 $devices_Ids = $request->deviceIds;
-                DormitoryBuildingDevice::whereIn('groupid', [$info['groupid'], $info['visitor_groupid']])->delete();
+                DormitoryBuildingDevice::whereIn('groupid', [$info['groupid'], $info['visitor_groupid']])->where('type',1)->delete();
                 if ($request->deviceIds != 'delete') {
                     $devicesC = $devicesB = json_decode($request->deviceIds, true);
                     $devices_Ids = implode(',', array_column($devicesB, 'id'));
-                    $upArrD = ['groupid' => $info['groupid'], 'grouptype' => 1];
+                    $upArrD = ['campusid'=>$info->campusid,'groupid' => $info['groupid'], 'grouptype' => $userId];
                     array_walk($devicesB, function (&$value, $key, $upArrD) {
                         $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrD);
                     }, $upArrD);
-                    $upArrDs = ['groupid' => $info['visitor_groupid'], 'grouptype' => 2];
+                    $upArrDs = ['campusid'=>$info->campusid,'groupid' => $info['visitor_groupid'], 'grouptype' => $visitId];
                     array_walk($devicesC, function (&$value, $key, $upArrDs) {
                         $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrDs);
                     }, $upArrDs);
@@ -343,9 +355,9 @@ class DormController extends Controller
                 DormitoryUsersGroup::whereIn('groupid', [$info['groupid'], $info['visitor_groupid']])->delete();
             }
             //用户组
-            DormitoryBuildingDevice::where('groupid', $info['groupid'])->delete();
+            DormitoryBuildingDevice::where('groupid', $info['groupid'])->where('type',1)->delete();
             //访客组
-            DormitoryBuildingDevice::where('groupid', $info['visitor_groupid'])->delete();
+            DormitoryBuildingDevice::where('groupid', $info['visitor_groupid'])->where('type',1)->delete();
             //删除link上的组
             $res = $this->senselink->linkgroup_del($info['groupid']);
             file_put_contents(storage_path('logs/del_group.log'),$info->id.'删除用户组'.json_encode($res).PHP_EOL,FILE_APPEND);
