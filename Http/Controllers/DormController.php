@@ -87,7 +87,7 @@ class DormController extends Controller
                 ->whereIn('id',$buildids)
                 ->with(['dormitory_users' => function ($q) {
                     $q->select('dormitory_users.id', 'dormitory_users.username', 'dormitory_users.idnum');
-                }])->orderBy('id', 'desc')->paginate($pagesize);
+                }])->orderBy('id', 'asc')->paginate($pagesize);
         }
         //超级管理员查看所有组列表
         if ($type == DormitoryGroup::GROUPTYPE && auth()->user()->id == 1) {

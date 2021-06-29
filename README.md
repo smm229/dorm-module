@@ -75,6 +75,7 @@ composer require smm229/dorm-module
 ```
 5、添加crontab计划任务<br/>
 ```
+    crontab -u www -e
     * * * * * php /home/www/项目路径/artisan schedule:run >> /dev/null 2>&1
 ```
 

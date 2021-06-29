@@ -96,6 +96,9 @@ class VisitController extends Controller
                 'visit_note' => $request->visit_note ?? '',
                 'idnum'     =>  $teacher->idnum,
                 'receptionuser'=>$teacher->username,
+                'follow'   => $request['follow'],
+                'has_car'  => $request['has_car'],
+                'carnum'   =>$request['carnum'],
                 'status' => 2,
                 'confirm_time' => date('Y-m-d H:i:s')
             ];
@@ -149,6 +152,9 @@ class VisitController extends Controller
             'begin_time'      => $request['begin_time'],
             'end_time'        => $request['end_time'],
             'visit_place'     => $request['visit_place'],
+            'follow'          => $request['follow'],
+            'has_car'         => $request['has_car'],
+            'carnum'          => $request['carnum'],
             'idnum'           => $teacher->idnum  ,
             'receptionuser'   => $teacher->username,
             'receptionUserId' => $receptionUserId

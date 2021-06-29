@@ -300,7 +300,13 @@ class DormHistoryController extends Controller
             $date=date('Y-m-d', strtotime("-$tap day",strtotime($end_date)));
             $key=date('m/d', strtotime("-$tap day",strtotime($end_date)));
             $dates[$j] = $key;
-            $value[$j] = DormitoryNoBackRecord::where('date',$date)->where('type',1)->whereIn('buildid',$buildids)->count();
+            $value[$j] = DormitoryNoBackRecord::where('date',$date)->where('type',1)
+                ->where(function ($q) use ($request){
+                if($request->campusname) $q->where('campusname',$request->campusname);
+                if($request->username) $q->where('username','like','%'.$request->username.'%');
+                if($request->idnum) $q->whereIdnum($request->idnum);
+                if($request->college_name) $q->where('college_name',$request->college_name);
+            })->whereIn('buildid',$buildids)->count();
             $j++;
         }
         return showMsg('获取成功',200,$list,['date'=>$dates,'value'=>$value]);
@@ -436,7 +442,7 @@ class DormHistoryController extends Controller
                 if($request->campusname) $q->where('campusname',$request->campusname);
                 if($request->buildid) $q->where('buildid',$request->buildid);
                 if($request->start_date) $q->where('pass_time','>=',$request->start_date);
-                if($request->end_date) $q->where('pass_time','>=',$request->end_date.' 23:59:59');
+                if($request->end_date) $q->where('pass_time','<=',$request->end_date.' 23:59:59');
             })
             ->orderBy('id','desc')
             ->paginate($pagesize);

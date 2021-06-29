@@ -48,7 +48,9 @@ class WarningRecordController extends Controller{
             return showMsg('未发现相关视频');
         }
         $filename = '';
+        $i=0;
         try{
+            START:
             $new_video_path = "/files/" . date('Ymd') . "/".create_secret(10).'.mp4';
             //查找对应的视频
             $videos = readNebulaDir(public_path($record->path),3);
@@ -61,8 +63,21 @@ class WarningRecordController extends Controller{
                     break;
                 }
             }
+            if(!$filename){ //不存在准确时间，查找相似时间内的数据,待测试
+                foreach($videos as $v){
+                    $arr = explode('-',$v);
+                    $arr2 = explode('[A]',$arr[1]);
+                    if($record->start_time>$arr[0] && $record->start_time<$arr2[0]){ //在时间内
+                        $filename = $v;
+                        break;
+                    }
+                }
+            }
             if(!$filename){
                 throw new \Exception('未发现相关视频');
+            }
+            if(strpos($filename,'.dav_')!==false){ //未生成
+                return showMsg('视频生成中，请稍后再试');
             }
             //转码视频
             $str = "ffmpeg -i " . public_path($record->path."/".$filename) . " -vcodec copy " . public_path('/uploads' . $new_video_path);
@@ -71,9 +86,10 @@ class WarningRecordController extends Controller{
             if(file_exists(public_path('/uploads' . $new_video_path))){
                 $record->video = env('APP_URL').'/uploads'.$new_video_path;
                 $record->save();
-                return showMsg('成功',200,['url'=>env('APP_URL').'/uploads'.$new_video_path]);
+                return showMsg('成功',200,['video'=>env('APP_URL').'/uploads'.$new_video_path]);
+            }else{
+                return showMsg('视频生成中，请稍后再试');
             }
-            throw new \Exception('获取视频失败');
         }catch(\Exception $e){
             $record->start_time = null;
             $record->save();

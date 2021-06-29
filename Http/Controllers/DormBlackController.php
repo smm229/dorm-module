@@ -251,7 +251,7 @@ class DormBlackController extends Controller
                         }else{
                             $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
                         }
-                        Queue::push(new SyncNebula([$img_ids],4,$lib_id,3));
+                        Queue::push(new SyncNebula($img_ids,4,$lib_id,3));
 
                         if($del_link['code'] == 200 && $del_link['message'] == 'OK'){
 
@@ -654,7 +654,7 @@ class DormBlackController extends Controller
             if ($request['campusname']) $req->where('campusname', $request['campusname']);
             if ($request['buildid']) $req->where('buildid', $request['buildid']);
             if ($request['start_date']) $req->where('pass_time','>=',$request['start_date']);
-            if ($request['end_date']) $req->where('pass_time','>=',$request['end_date'].' 23:59:59');
+            if ($request['end_date']) $req->where('pass_time','<=',$request['end_date'].' 23:59:59');
         })->orderBy('id','desc')->paginate($request['pageSize'])->toArray();
 
         if (!$res) {

@@ -30,7 +30,7 @@ class Visit extends Model
     {
         $status = ['1'=>'待审核', '2'=>'已通过', '3' => '已拒绝', '4'=>'作废'];
 
-        return $status[$this->status];
+        return isset($this->status) ? $status[$this->status] : '待审核';
     }
 
     public function getCampusNameAttribute()

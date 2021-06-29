@@ -65,6 +65,16 @@ class DavToVideo extends Command
                             break;
                         }
                     }
+                    if(!$filename){ //不存在准确时间，查找相似时间内的数据,待测试
+                        foreach($videos as $v){
+                            $arr = explode('-',$v);
+                            $arr2 = explode('[A]',$arr[1]);
+                            if($record->start_time>$arr[0] && $record->start_time<$arr2[0]){ //在时间内
+                                $filename = $v;
+                                break;
+                            }
+                        }
+                    }
                     if(!$filename){
                         throw new \Exception('未发现相关视频');
                     }
