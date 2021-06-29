@@ -2,9 +2,12 @@
 
 namespace Modules\Dorm\Entities;
 
+use App\Models\Teacher;
 use App\Traits\SerializeDate;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -18,7 +21,7 @@ class DormitoryUsers extends Authenticatable implements JWTSubject {
 
     protected $table = "dormitory_users";
 
-    protected $primaryKey = "idnum";
+    #protected $primaryKey = "idnum";
 
     protected $fillable = [];
 
@@ -35,7 +38,7 @@ class DormitoryUsers extends Authenticatable implements JWTSubject {
          * 第三个参数：当前表跟中间表对应的外键
          * 第四个参数：要关联的表跟中间表对应的外键
          * */
-        return $this->belongsToMany(DormitoryGroup::class,'dormitory_users_building','idnum','buildid');
+        return $this->belongsToMany(DormitoryGroup::class,'dormitory_users_building','idnum','buildid','idnum','id');
     }
 
     /**
@@ -55,5 +58,10 @@ class DormitoryUsers extends Authenticatable implements JWTSubject {
     {
         return ['role' => 'dorm'];
     }
+
+    public function role(){
+        return $this->belongsToMany(DormitoryAuthGroup::class,'dormitory_auth_user','userid','roleid');
+    }
+
 
 }

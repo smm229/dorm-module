@@ -17,4 +17,11 @@ class DormitoryBlackAccessRecord extends Model
 
     protected $fillable = [];
 
+    protected $appends = ['type'];
+
+    //名称
+    public function getTypeAttribute()
+    {
+        return '黑名单';
+    }
 }

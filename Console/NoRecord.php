@@ -3,6 +3,7 @@
 namespace Modules\Dorm\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Modules\Dorm\Entities\DormitoryAccessRecord;
 use Modules\Dorm\Entities\DormitoryBeds;
 use Modules\Dorm\Entities\DormitoryConfig;
@@ -60,7 +61,7 @@ class NoRecord extends Command
                             ->selectRaw('max(id) as id')
                             ->where('buildid',$v->id)
                             ->whereType(1)
-                            ->whereBetween('pass_time',[$date,$date.' 23:59:59']) //时间段内最后一次
+                            ->whereBetween('pass_time',[$date,date('Y-m-d 23:59:59',strtotime("-1 day"))]) //时间段内最后一次
                             ->groupBy('idnum')
                             ->get();
                     })
@@ -79,22 +80,34 @@ class NoRecord extends Command
                         ->get()->toArray();
                     array_walk($students, function ($value, $key) use ($date){
                         if($value['student']) {
-                            $arr = [
+                            $record = DormitoryNoRecord::where([
                                 'buildid' => $value['buildid'],
                                 'type' => 1,
                                 'idnum' => $value['idnum'],
-                                'username' => $value['student']['username'],
-                                'sex' => $value['student']['sex_name'],
-                                'college_name' => $value['student']['collegename'],
-                                'major_name' => $value['student']['majorname'],
-                                'grade_name' => $value['student']['grade'],
-                                'class_name' => $value['student']['classname'],
-                                'build_name' => $value['build_name'],
-                                'roomnum' => $value['room_num'],
-                                'bednum' => $value['bednum'],
-                                'date' => $date
-                            ];
-                            DormitoryNoRecord::insert($arr);
+                                'end_date'  =>  date('Y-m-d',strtotime("-2 day"))
+                            ])->first();//统计前天是否有记录
+                            if($record){
+                                DormitoryNoRecord::whereId($record->id)->update(['end_date'  =>  date('Y-m-d',strtotime("-1 day"))]);
+                            }else{
+                                $arr = [
+                                    'buildid' => $value['buildid'],
+                                    'type' => 1,
+                                    'idnum' => $value['idnum'],
+                                    'username' => $value['student']['username'],
+                                    'sex' => $value['student']['sex_name'],
+                                    'campusname'=>$value['student']['campusname'],
+                                    'college_name' => $value['student']['collegename'],
+                                    'major_name' => $value['student']['majorname'],
+                                    'grade_name' => $value['student']['grade'],
+                                    'class_name' => $value['student']['classname'],
+                                    'build_name' => $value['build_name'],
+                                    'roomnum' => $value['room_num'],
+                                    'bednum' => $value['bednum'],
+                                    'begin_date' => $date,
+                                    'end_date'  =>  date('Y-m-d',strtotime("-1 day")) //今天统计截止到昨天
+                                ];
+                                DormitoryNoRecord::insert($arr);
+                            }
                         }
                     });
 

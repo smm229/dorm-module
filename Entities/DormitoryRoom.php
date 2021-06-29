@@ -2,6 +2,7 @@
 
 namespace Modules\Dorm\Entities;
 
+use App\Models\Campus;
 use App\Traits\SerializeDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,8 +16,11 @@ class DormitoryRoom extends Model
 
     protected $table="dormitory_room";
 
-    protected $appends = ['building_name','buildtype_name'];
+    protected $appends = ['building_name','buildtype_name','campusname'];
 
+    public function getCampusnameAttribute(){
+        return Campus::whereId($this->campusid)->value('name');
+    }
     //楼宇名称
     public function getBuildingNameAttribute()
     {

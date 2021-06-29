@@ -3,26 +3,35 @@
 namespace Modules\Dorm\Http\Controllers;
 
 use App\Exports\Export;
+use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
+use Modules\Dorm\Entities\DormitoryBuildingDevice;
 use Modules\Dorm\Entities\DormitoryCategory;
 use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryRoom;
 use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Entities\DormitoryUsersBuilding;
+use Modules\Dorm\Entities\DormitoryUsersGroup;
 use Modules\Dorm\Http\Requests\DormitoryBuildingsValidate;
+use Modules\Dorm\Jobs\AllocateBuild;
 use Excel;
+use phpDocumentor\Reflection\Types\False_;
+use senselink;
 
 class DormController extends Controller
 {
 
     public function __construct()
     {
+        $this->senselink = new senselink();
         $this->middleware('AuthDel')->only(['del','del_cate']);
     }
 
-    /*
+    /**
      * 调出excel
      * 暂时导出全部
      */
@@ -53,64 +62,174 @@ class DormController extends Controller
             }
         }
         $excel = new Export($data, $header,'宿舍楼信息');
-        return Excel::download($excel, time().'.xlsx');
-
+        $file = 'file/'.time().'.xlsx';
+        if(\Maatwebsite\Excel\Facades\Excel::store($excel, $file,'public')){
+            return showMsg('成功',200,['url'=>'/uploads/'.$file]);
+        }
+        return showMsg('下载失败');
     }
 
-    /*
-     * 宿舍楼列表
+    /**
+     * 宿舍楼or权限组列表
+     * @param campusid 校区id
      */
     public function lists(Request $request){
-        $pagesize = $request->pagesize ?? 12;
-        //只查询自己权限的楼宇
-        $buildids = RedisGet('builds-'.auth()->user()->id);
-
-        $list = DormitoryGroup::select('id', 'title', 'floor')
-            ->whereType(1)
-            ->whereIn('id',$buildids)
-            ->with(['dormitory_users' => function ($q) {
-                $q->select('dormitory_users.id', 'dormitory_users.username', 'dormitory_users.idnum');
-            }])
-            ->paginate($pagesize);
-
-        return showMsg('获取成功',200,$list);
+        $pagesize = $request->pageSize ?? 12;
+        $type     = $request->type?$request->type:DormitoryGroup::DORMTYPE;
+        if ($type  == DormitoryGroup::DORMTYPE) {
+            //宿管只能查看自己的宿舍楼信息
+            $idnum = auth()->user()->idnum;
+            $buildids = RedisGet('builds-'.$idnum);
+            $list = DormitoryGroup::whereType($type)
+                ->where(function ($q) use ($request){
+                    if($request->campusid) $q->where('campusid',$request->campusid);
+                })
+                ->whereIn('id',$buildids)
+                ->with(['dormitory_users' => function ($q) {
+                    $q->select('dormitory_users.id', 'dormitory_users.username', 'dormitory_users.idnum');
+                }])->orderBy('id', 'asc')->paginate($pagesize);
+        }
+        //超级管理员查看所有组列表
+        if ($type == DormitoryGroup::GROUPTYPE && auth()->user()->id == 1) {
+            $list = DormitoryGroup::where(function ($req) use ($request){
+                if($request->campusid) $req->where('campusid',$request->campusid);
+                if ($request['search'])  $req->where('title', 'like', '%'.$request['search'].'%');
+            })->orderBy('id', 'desc')->paginate($pagesize);
+        }
+        return showMsg('获取成功',200, $list);
     }
 
-    /*
-     * 添加楼宇
-     * @param title 名称
-     * @param buildtype 楼宇类型id
-     * @param floor 楼层
-     * @param teachers 宿管老师idnum集合
+    /**
+     * 添加权限组or宿舍楼
+     * @param title       名称
+     * @param buildtype   楼宇类型id
+     * @param floor       楼层
+     * @param teachers    宿管老师idnum集合
+     * @param $device_ids 设备id合集
+     * @param campusid 校区id
      */
-    public function add(DormitoryBuildingsValidate $request){
-        try{
-            if(DormitoryGroup::whereTitle($request->title)->first()){
-                throw new \Exception('请更换名称');
+    public function add(Request $request){
+        if (!$request->title || !$request->campusid) {
+            return showMsg('缺少必要参数');
+        }
+        if(DormitoryGroup::whereTitle($request->title)->first()){
+            return showMsg('名称重复，请更换');
+        }
+        $type = $request->type?$request->type:DormitoryGroup::DORMTYPE;
+        if ($type == DormitoryGroup::DORMTYPE) {
+            if (!$request->buildtype || !$request->floor) {
+                return showMsg('缺少必要参数');
             }
-            DB::transaction(function () use ($request){
+        }
+        $gid = $vid = ''; //访客组和用户组
+        DB::beginTransaction();
+        try{
+            $users = [];
+            if ($type == DormitoryGroup::DORMTYPE) {
                 $buildid = DormitoryGroup::insertGetId([
                     'title'         =>  $request->title,
-                    'type'          =>  1,
-                    'buildtype'    =>  $request->buildtype,
-                    'floor'         =>  $request->floor
+                    'campusid'      =>  $request->campusid,
+                    'type'          =>  DormitoryGroup::DORMTYPE,
+                    'buildtype'     =>  $request->buildtype,
+                    'floor'         =>  $request->floor,
                 ]);
-                $users = explode(',',$request->teachers);
-                $build = ['buildid'=>$buildid];
-                //宿管关联表
-                array_walk($users, function (&$value, $key, $build) {
-                    $value = array_merge(['idnum'=>$value], $build);
-                }, $build);
-                DormitoryUsersBuilding::insert($users);
-            });
-            return showMsg('操作成功',200);
-        }catch(\Exception $e){
-            return showMsg('添加失败');
+                if ($request->teachers) {
+                    $users = explode(',', $request->teachers);
+                    $build = ['buildid' => $buildid];
+                    //宿管关联表
+                    array_walk($users, function (&$value, $key, $build) {
+                        $value = array_merge(['idnum'=>$value], $build);
+                    }, $build);
+                    DormitoryUsersBuilding::insert($users);
+                    Teacher::whereIn('idnum',array_column($users,'idnum'))->update(['type'=>2]); //身份改为宿管
+                }
+            }
+            if ($type ==  DormitoryGroup::GROUPTYPE) {
+                $buildid = DormitoryGroup::insertGetId([
+                    'title'   =>  $request->title,
+                    'type'    =>  DormitoryGroup::GROUPTYPE,
+                ]);
+            }
+            //权限组分配设备
+            $devices_Ids = [];
+            if ($request->deviceIds) {
+                $devicesC = $devicesB = json_decode($request->deviceIds, true);
+                $devices_Ids = implode(',', array_column($devicesB, 'id'));
+            }
+            //如果添加成功，添加link到员工组，访客组，黑名单组
+            if ($buildid) {
+                $userId = env("LIKEGROUP_STAFF") ?? 1;
+                $visitId = env("LIKEGROUP_VISITOR") ?? 2;
+                $blackId = env("LIKEGROUP_BLACKLIST") ?? 3;
+                //添加员工组
+                $res = $this->senselink->linkgroup_add($request->title, $userId);
+                if($res['code']==200){
+                    $gid = $res['data']['id'];
+                }
+                //添加访客组
+                $visitorRes = $this->senselink->linkgroup_add($request->title, $visitId);
+                if($visitorRes['code']==200){
+                    $vid = $visitorRes['data']['id'];
+                }
+                if (isset($res['data']) && isset($res['data']['id']) && isset($visitorRes['data']['id'])  && isset($visitorRes['data'])) {
+                    $upArr = [
+                        'groupid'           => $res['data']['id'],
+                        'visitor_groupid'   => $visitorRes['data']['id'],
+                    ];
+                    DormitoryGroup::where('id', $buildid)->update($upArr);
+                    //link内分别给三个类型组分配设备
+                    $resD          = $this->senselink->linkgroup_edit(false, $res['data']['id'], $devices_Ids);
+                    $visitorResD   = $this->senselink->linkgroup_edit(false, $visitorRes['data']['id'], $devices_Ids);
+                    //查询所有设备加入默认黑名单
+                    $blackDevices = $this->senselink->linkdevice_list('',1,10000);
+                    if ($blackDevices['code'] == 200 && $blackDevices['message'] == 'OK' && isset($blackDevices['data']['data'])) {
+                        $blackIDs = [];
+                        foreach ($blackDevices['data']['data'] as $k => $v) {
+                                $blackIDs[] = $v['device']['id'];
+                        }
+                        if (!empty($blackIDs)) {
+                            $devices_Idss = implode(',', $blackIDs);
+                            $blacklistResD = $this->senselink->linkgroup_edit(false, $blackId, $devices_Idss);
+                        }
+                    }
+                    if (isset($resD['data']) && isset($resD['data']['id']) && isset($visitorResD['data']['id'])  && isset($visitorResD['data']) && isset($blacklistResD['data']['id']) && isset($blacklistResD['data'])) {
+                        if ($request->deviceIds) {
+                            $upArrD = ['campusid'      =>  $request->campusid,'groupid' => $res['data']['id'], 'grouptype' => 1];
+                            array_walk($devicesB, function (&$value, $key, $upArrD) {
+                                $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrD);
+                            }, $upArrD);
+                            $upArrDs = ['campusid'      =>  $request->campusid,'groupid' => $visitorRes['data']['id'], 'grouptype' => 2];
+                            array_walk($devicesC, function (&$value, $key, $upArrDs) {
+                                $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrDs);
+                            }, $upArrDs);
+                            $devices = array_merge_recursive($devicesB, $devicesC);
+                            DormitoryBuildingDevice::insert($devices);
+                        }
+                    }
+                    DB::commit();
+                    //队列修改管理员所属楼宇
+                    if($users) {
+                        Queue::push(new AllocateBuild($users, $buildid));
+                    }
+                    return showMsg('操作成功',200);
+                } else {
+                    DB::rollBack();
+                    //同步删除link组
+                    if($gid)  $this->senselink->linkgroup_del($gid);
+                    if($vid)  $this->senselink->linkgroup_del($vid);
+                    return showMsg('添加失败');
+                }
+            }else{
+                throw new \Exception('添加失败');
+            }
+        }catch(\Exception $e) {
+            DB::rollBack();
+            return showMsg($e->getMessage());
         }
     }
 
-    /*
-    * 编辑楼宇
+    /**
+    * 编辑楼宇 or 通行权限组
     * @param title 名称
     * @param buildtype 楼宇类型id
     * @param floor 楼层
@@ -118,56 +237,145 @@ class DormController extends Controller
     * @param icon 图标
     * @param teachers 宿管老师idnum集合
     */
-    public function edit(DormitoryBuildingsValidate $request){
+    public function edit(Request $request){
         try{
-            if($info = DormitoryGroup::whereId($request->id)->first()){
+            if(!$info = DormitoryGroup::whereId($request->id)->first()){
                 throw new \Exception('信息不存在');
             }
-            if(DormitoryGroup::whereTitle($request->title)->where('id','<>',$request->id)->first()){
+            if(DormitoryGroup::whereTitle($request->title)->where('id', '<>', $request->id)->first()){
                 throw new \Exception('请更换名称');
             }
-            //查看楼层
-            if($request->floor<$info->floor){
-                throw new \Exception('楼层不能低于原楼层');
+            DB::beginTransaction();
+            $type = $request->type ? $request->type:DormitoryGroup::DORMTYPE;
+            if ($type == DormitoryGroup::DORMTYPE) {
+                if (!$request->buildtype || !$request->floor) {
+                    throw new \Exception('缺少必要参数');
+                }
+                //查看楼层
+                if($request->floor < $info->floor){
+                    throw new \Exception('楼层不能低于原楼层');
+                }
+                $info->buildtype  =  $request->buildtype;
+                $info->floor      =  $request->floor;
             }
-            DB::transaction(function () use ($request,$info){
-                $info->title         =  $request->title;
-                $info->buildtype    =  $request->buildtype;
-                $info->floor         =  $request->floor;
-                $info->ename         =  $request->ename ?? '';
-                $info->icon          =  $request->icon ?? '';
-                $info->save();
-                $build = ['buildid'=>$info->id];
-
+            if($request->campusid)  $info->campusid      =  $request->campusid;
+            $info->title  =  $request->title;
+            $info->save();
+            $users = [];
+            $build = ['buildid' => $info->id];
+            if ($request->teachers) {
+                $teacherids = DormitoryUsersBuilding::where($build)->pluck('idnum')->toArray();
                 DormitoryUsersBuilding::where($build)->delete();
-                $users = explode(',',$request->teachers);
+                Teacher::whereIn('idnum',$teacherids)->update(['type'=>1]); //身份先改为普通老师
+                $users = explode(',', $request->teachers);
                 //宿管关联表
                 array_walk($users, function (&$value, $key, $build) {
-                    $value = array_merge(['idnum'=>$value], $build);
+                    $value = array_merge(['idnum' => $value], $build);
                 }, $build);
                 DormitoryUsersBuilding::insert($users);
-            });
-            return showMsg('操作成功',200);
+                Teacher::whereIn('idnum',$users)->update(['type'=>2]); //改为宿管
+            }
+            //编辑管辖设备，可以为空数组
+            $userId = env("LIKEGROUP_STAFF") ?? 1;
+            $visitId = env("LIKEGROUP_VISITOR") ?? 2;
+            $blackId = env("LIKEGROUP_BLACKLIST") ?? 3;
+            $devices_Ids = [];
+            if ($request->deviceIds) {
+                $devices_Ids = $request->deviceIds;
+                DormitoryBuildingDevice::whereIn('groupid', [$info['groupid'], $info['visitor_groupid']])->where('type',1)->delete();
+                if ($request->deviceIds != 'delete') {
+                    $devicesC = $devicesB = json_decode($request->deviceIds, true);
+                    $devices_Ids = implode(',', array_column($devicesB, 'id'));
+                    $upArrD = ['campusid'=>$info->campusid,'groupid' => $info['groupid'], 'grouptype' => $userId];
+                    array_walk($devicesB, function (&$value, $key, $upArrD) {
+                        $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrD);
+                    }, $upArrD);
+                    $upArrDs = ['campusid'=>$info->campusid,'groupid' => $info['visitor_groupid'], 'grouptype' => $visitId];
+                    array_walk($devicesC, function (&$value, $key, $upArrDs) {
+                        $value = array_merge(['deviceid'=>$value['id'], 'senselink_sn' => $value['senselink_sn'], 'devicename' => $value['name']], $upArrDs);
+                    }, $upArrDs);
+                    $devices = array_merge_recursive($devicesB, $devicesC);
+                    DormitoryBuildingDevice::insert($devices);
+                }
+            }
+            //更新link的组的信息
+            $res           = $this->senselink->linkgroup_edit($request->title, $info['groupid'], $devices_Ids);
+            Log::error('正常组编辑',$res);
+            $visitorRes    = $this->senselink->linkgroup_edit($request->title, $info['visitor_groupid'], $devices_Ids);
+            Log::error('访客组编辑',$visitorRes);
+            //查询所有设备加入默认黑名单
+            $blackDevices = $this->senselink->linkdevice_list('',1,10000);
+            if ($blackDevices['code'] == 200 && $blackDevices['message'] == 'OK' && isset($blackDevices['data']['data'])) {
+                $blackIDs = [];
+                foreach ($blackDevices['data']['data'] as $k => $v) {
+                    $blackIDs[] = $v['device']['id'];
+                }
+                if (!empty($blackIDs)) {
+                    $devices_Idss = implode(',', $blackIDs);
+                    $blacklistRes  = $this->senselink->linkgroup_edit($request->title, $blackId, $devices_Idss);
+                    Log::error('黑名单组编辑',$blacklistRes);
+                }
+            }
+            if (isset($res['data']) && isset($res['data']['id']) && isset($visitorRes['data']['id'])  && isset($visitorRes['data'])) {
+                 DB::commit();
+                 //队列修改管理员所属楼宇
+                if($users) {
+                    Queue::push(new AllocateBuild($users,$info->id, $teacherids));
+                }
+                 return showMsg('修改成功',200);
+            } else {
+                 DB::rollBack();
+                 return showMsg('修改失败'.json_encode($res));
+            }
         }catch(\Exception $e){
-            return showMsg('添加失败');
+            return showMsg($e->getMessage());
         }
     }
 
     /*
-     * 删除楼宇
+     * 删除楼宇or通行权限组
      */
     public function del(Request $request){
-        if(!DormitoryGroup::whereId($request->id)->first()){
+        if(!$info = DormitoryGroup::whereId($request->id)->first()){
             return showMsg('信息不存在');
         }
-        if(DormitoryUsersBuilding::where('buildid',$request->id)->count()>0 || DormitoryRoom::where('buildid',$request->id)->count()>0){
-            return showMsg('无法删除');
+        $type = $request->type ? $request->type:DormitoryGroup::DORMTYPE;
+        if ($type == DormitoryGroup::DORMTYPE) {
+            if(DormitoryRoom::where('buildid',$request->id)->count()>0){
+                return showMsg('请先删除相关宿舍');
+            }
         }
-        DormitoryGroup::whereId($request->id)->delete();
-        return showMsg('删除成功',200);
+        try{
+            DB::beginTransaction();
+            DormitoryGroup::whereId($request->id)->delete();
+            if ($type == DormitoryGroup::DORMTYPE) {
+                DormitoryUsersBuilding::where('buildid', $request->id)->delete();
+            }
+            if ($type == DormitoryGroup::DORMTYPE) {
+                DormitoryUsersGroup::whereIn('groupid', [$info['groupid'], $info['visitor_groupid']])->delete();
+            }
+            //用户组
+            DormitoryBuildingDevice::where('groupid', $info['groupid'])->where('type',1)->delete();
+            //访客组
+            DormitoryBuildingDevice::where('groupid', $info['visitor_groupid'])->where('type',1)->delete();
+            //删除link上的组
+            $res = $this->senselink->linkgroup_del($info['groupid']);
+            file_put_contents(storage_path('logs/del_group.log'),$info->id.'删除用户组'.json_encode($res).PHP_EOL,FILE_APPEND);
+            $visitor = $this->senselink->linkgroup_del($info['visitor_groupid']);
+            file_put_contents(storage_path('logs/del_group.log'),$info->id.'删除访客组'.json_encode($visitor).PHP_EOL,FILE_APPEND);
+            if (isset($res['code']) && $res['code'] == 200) {
+                DB::commit();
+                return showMsg('删除成功',200);
+            } else {
+                DB::rollBack();
+                return showMsg('删除失败');
+            }
+        }catch(\Exception $e){
+            return showMsg($e->getMessage());
+        }
     }
 
-    /*
+    /**
      * 添加楼宇类型
      * @param name string 名称
      * @param sort int 排序
@@ -255,4 +463,6 @@ class DormController extends Controller
             ->get(['id','name']);
         return showMsg('获取成功',200,$list);
     }
+
+
 }

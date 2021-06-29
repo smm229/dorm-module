@@ -3,6 +3,7 @@
 namespace Modules\Dorm\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Modules\Dorm\Entities\DormitoryAccessRecord;
 use Modules\Dorm\Entities\DormitoryBeds;
 use Modules\Dorm\Entities\DormitoryGroup;
@@ -88,6 +89,7 @@ class NoBack extends Command
                                 'idnum' => $value['idnum'],
                                 'username' => $value['student']['username'],
                                 'sex' => $value['student']['sex_name'],
+                                'campusname'=>$value['student']['campusname'],
                                 'college_name' => $value['student']['collegename'],
                                 'major_name' => $value['student']['majorname'],
                                 'grade_name' => $value['student']['grade'],
@@ -95,7 +97,7 @@ class NoBack extends Command
                                 'build_name' => $value['build_name'],
                                 'roomnum' => $value['room_num'],
                                 'bednum' => $value['bednum'],
-                                'date' => $date
+                                'date' => date('Y-m-d',strtotime("-1 day"))
                             ];
                             DormitoryNoBackRecord::insert($arr);
                         }

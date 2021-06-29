@@ -11,6 +11,5 @@
 |
 */
 
-Route::any('/', 'DormController@index');
 
 

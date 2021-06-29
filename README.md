@@ -53,16 +53,29 @@ composer require smm229/dorm-module
         \Modules\Dorm\Console\NoBack::class,
         //截止昨日多日无记录
         \Modules\Dorm\Console\NoRecord::class,
+        //宿管首页数据统计告警记录
+        \Modules\Dorm\Console\RecordInfo::class,
+        //宿管首页统计24小时通行数
+        \Modules\Dorm\Console\Reckon::class,
+        //推送模板消息
+        Modules\Dorm\Console\WechatPush::class,
+        //更新星云脚本
+        \Modules\Dorm\Console\NebulaRefresh::class,
     ];
     .....
     protected function schedule(Schedule $schedule)
     {
          $schedule->command('no_back')->dailyAt("00:01");//第一分钟执行
          $schedule->command('no_record')->dailyAt("01:00");//凌晨一点执行
+         $schedule->command('record_info')->everyTenMinutes();//10分钟执行
+         $schedule->command('reckon')->everyTenMinutes();//10分钟执行
+         $schedule->command('wechat_push')->dailyAt("07:00");//早上七点执行
+         $schedule->command('nebula_refresh')->dailyAt("00:05");//第5分钟执行
     }
 ```
 5、添加crontab计划任务<br/>
 ```
+    crontab -u www -e
     * * * * * php /home/www/项目路径/artisan schedule:run >> /dev/null 2>&1
 ```
 
@@ -71,5 +84,16 @@ composer require smm229/dorm-module
 守护进程
 php artisan queue:work --daemon &
 或者
-nohup php artisan queue:listen > /tmp/artisan.log 2>&1 &
+nohup php artisan queue:listen >/dev/null 2>&1 &
+或者（我用的这个）
+nohup php artisan queue:work --daemon >/dev/null 2>&1 &
+刷新队列
+php artisan queue:flush
+重新运行队列
+php artisan queue:restart
+查看进程数量：
+ps -ef | grep 'artisan queue' |grep -v 'grep' | wc -l
+查看详细进程
+ps -ef | grep 'artisan queue'
 ```
+

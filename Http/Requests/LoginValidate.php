@@ -18,9 +18,7 @@ class LoginValidate extends FormRequest
     {
         return [
             'idnum'  =>  'required',
-            'password'  =>  'required|min:4|max:20',
-            'key'       =>  'required',
-            'captcha'   =>  'required'
+            'password'  =>  'required|min:4|max:20'
         ];
     }
 
@@ -30,9 +28,7 @@ class LoginValidate extends FormRequest
             'idnum.required'     =>  '请输入账号',
             'password.required'     => '请输入密码',
             'password.min'          => '密码长度不得小于4位',
-            'password.max'          => '密码长度不得大于20位',
-            'key.required'          =>  '请输入验证码',
-            'captcha.required'      =>  '请输入验证码'
+            'password.max'          => '密码长度不得大于20位'
         ];
     }
 
