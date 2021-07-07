@@ -138,34 +138,25 @@ class DormBlackController extends Controller
                 $data['author'] = auth()->user()->username;
                 $id =  DormitoryBlack::insertGetId($data);
 
-               $groupid = DormitoryBlackGroup::insertGetId(['type'=>$request['type'],'senselink_id'=>$data['senselink_id'],'user_id'=>$user_id]);
+                DormitoryBlackGroup::insertGetId(['type'=>$request['type'],'senselink_id'=>$data['senselink_id'],'user_id'=>$user_id]);
                 DB::commit();
             }else{
-                if($request['type'] == 5){
-                    $this->senselink->linkblacklist_del($senselink_id);
-                }
                 DB::rollBack();
                 return showMsg('添加失败');
             }
         }catch(\Exception $e) {
-            if($request['type'] == 5){
-                $this->senselink->linkblacklist_del($senselink_id);
-            }
             DB::rollback();
             return showMsg('添加失败');
         }
-        if(empty($groupid)){
-            if($data['blacklist_class'] == 33){
-                $lib_id = env('SENSE_NEBULA_POLICE_GROUP');
-            }elseif ($data['blacklist_class'] == 34){
-                $lib_id = env('SENSE_NEBULA_SECURITY_GROUP');
-            }else{
-                $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
-            }
-            if( env('ONLINE')==0 ) {
-                Queue::push(new SyncNebula([$id], 4, $lib_id, 1));
-            }
+
+        if($data['blacklist_class'] == 33){
+            $lib_id = env('SENSE_NEBULA_POLICE_GROUP');
+        }elseif ($data['blacklist_class'] == 34){
+            $lib_id = env('SENSE_NEBULA_SECURITY_GROUP');
+        }else{
+            $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
         }
+        Queue::push(new SyncNebula([$id],4,$lib_id,1));
         return showMsg('添加成功',200);
     }
 
@@ -233,9 +224,8 @@ class DormBlackController extends Controller
                            }else{
                                $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
                            }
-                           if( env('ONLINE')==0 ) {
-                               Queue::push(new SyncNebula([$request['id']], 4, $lib_id, 2));
-                           }
+
+                           Queue::push(new SyncNebula([$request['id']],4,$lib_id,2));
                            return showMsg('修改成功',200);
                        }
                    }
@@ -261,9 +251,8 @@ class DormBlackController extends Controller
                         }else{
                             $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
                         }
-                        if( env('ONLINE')==0 ) {
-                            Queue::push(new SyncNebula($img_ids, 4, $lib_id, 3));
-                        }
+                        Queue::push(new SyncNebula($img_ids,4,$lib_id,3));
+
                         if($del_link['code'] == 200 && $del_link['message'] == 'OK'){
 
                             DormitoryBlack::where('id',$request['id'])->delete();
@@ -288,9 +277,7 @@ class DormBlackController extends Controller
                             }else{
                                 $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
                             }
-                            if( env('ONLINE')==0 ) {
-                                Queue::push(new SyncNebula([$id], 4, $lib_id, 1));
-                            }
+                            Queue::push(new SyncNebula([$id],4,$lib_id,1));
                             return showMsg('修改成功',200);
                         }
                     }
@@ -356,9 +343,7 @@ class DormBlackController extends Controller
                                 }else{
                                     $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
                                 }
-                                if( env('ONLINE')==0 ) {
-                                    Queue::push(new SyncNebula([$request['id']], 4, $lib_id, 2));
-                                }
+                                Queue::push(new SyncNebula([$request['id']],4,$lib_id,2));
                             }else{
                                 return showMsg('修改失败');
                             }
@@ -387,9 +372,7 @@ class DormBlackController extends Controller
                     }else{
                         $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
                     }
-                    if( env('ONLINE')==0 ) {
-                        Queue::push(new SyncNebula([$request['id']], 4, $lib_id, 2));
-                    }
+                    Queue::push(new SyncNebula([$request['id']],4,$lib_id,2));
                 }
             }catch(\Exception $e) {
                 return showMsg('修改失败');
@@ -414,23 +397,19 @@ class DormBlackController extends Controller
             $DormitoryBlack = DormitoryBlack::where('id',$request['id'])->first()->toArray();
             if ($DormitoryBlack['type'] == 5){
                 $result_link =  $this->senselink->linkblacklist_del($DormitoryBlack['senselink_id']);
-            }elseif ($DormitoryBlack['type'] == 4){
-
-                $result_link = $this->senselink->linkblacklist_moveout($DormitoryBlack['senselink_id']);
-
             }else{
                 $result_link = $this->senselink->linkblacklist_moveout($DormitoryBlack['senselink_id']);
 
                 if($result_link['code'] == 200 && $result_link['message'] == 'OK'){
 
                     $group =   DormitoryUsersGroup::where('senselink_id',$DormitoryBlack['senselink_id'])->pluck('groupid')->toArray();
-
                     $group =   implode(',', $group);
                     $result_link =  $this->senselink->linkperson_edit($DormitoryBlack['senselink_id'],'','',$group);
                 }else{
                     return showMsg('删除失败');
                 }
             }
+
             if($result_link['code'] == 200 && $result_link['message'] == 'OK'){
 
                 if($DormitoryBlack['type'] == 1){
@@ -449,6 +428,20 @@ class DormBlackController extends Controller
                 DormitoryBlack::where('id',$request['id'])->delete();
                 DormitoryBlackGroup::where('senselink_id',$DormitoryBlack['senselink_id'])->delete();
                 DB::commit();
+
+                $img_ids = $DormitoryBlack['img_id'] ? unserialize($DormitoryBlack['img_id']) : [];
+
+                if($img_ids){
+                    if($DormitoryBlack['blacklist_class'] == 33){
+                        $lib_id = env('SENSE_NEBULA_POLICE_GROUP');
+                    }elseif ($DormitoryBlack['blacklist_class'] == 34){
+                        $lib_id = env('SENSE_NEBULA_SECURITY_GROUP');
+                    }else{
+                        $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
+                    }
+                   Queue::push(new SyncNebula($img_ids,4,$lib_id,3));
+                }
+
             }else{
                 DB::rollBack();
                 return showMsg('删除失败');
@@ -456,23 +449,6 @@ class DormBlackController extends Controller
         }catch(\Exception $e) {
             DB::rollback();
             return showMsg('删除失败');
-        }
-
-        $img_ids = $DormitoryBlack['img_id'] ? unserialize($DormitoryBlack['img_id']) : [];
-
-
-        if($img_ids){
-            if($DormitoryBlack['blacklist_class'] == 33){
-                $lib_id = env('SENSE_NEBULA_POLICE_GROUP');
-            }elseif ($DormitoryBlack['blacklist_class'] == 34){
-                $lib_id = env('SENSE_NEBULA_SECURITY_GROUP');
-            }else{
-                $lib_id = env('SENSE_NEBULA_WARNING_GROUP');
-            }
-
-            if( env('ONLINE')==0 ) {
-                Queue::push(new SyncNebula($img_ids, 4, $lib_id, 3));
-            }
         }
         return showMsg('删除成功',200);
     }
