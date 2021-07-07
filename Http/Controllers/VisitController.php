@@ -104,7 +104,9 @@ class VisitController extends Controller
             ];
             $res = Visit::insertGetId($addArr);
             GuestController::pushdata($addArr);
-            Queue::push(new SyncNebula([$res],3,env('SENSE_NEBULA_WHITE_GROUP') ?? 1,1));
+            if( env('ONLINE')==0 ) {
+                Queue::push(new SyncNebula([$res], 3, env('SENSE_NEBULA_WHITE_GROUP') ?? 1, 1));
+            }
             return $this->response->array(['status_code' => 200, 'message' => '成功', 'data' => $res]);
         }catch(\Exception $e){
             return showMsg($e->getMessage());
@@ -169,7 +171,9 @@ class VisitController extends Controller
             $addArr['visit_note'] = $request['visit_note'];
         }
         $res = Visit::where('link_id', $perInfo[0]['link_id'])->update($addArr);
-        Queue::push(new SyncNebula([$request['id']],3,env('SENSE_NEBULA_WHITE_GROUP') ?? 1,2));
+        if( env('ONLINE')==0 ) {
+            Queue::push(new SyncNebula([$request['id']], 3, env('SENSE_NEBULA_WHITE_GROUP') ?? 1, 2));
+        }
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
     }
 
@@ -199,7 +203,7 @@ class VisitController extends Controller
         }else{
             $res = Visit::where('id', $perInfo->id)->delete();
         }
-        if($perInfo->img_id) {
+        if($perInfo->img_id && env('ONLINE')==0 ) {
             Queue::push(new SyncNebula(unserialize($perInfo->img_id), 3, env('SENSE_NEBULA_WHITE_GROUP') ?? 1, 3));
         }
         return $this->response->array(['status_code' => 200, 'message'=> '成功', 'data' => $res]);
@@ -329,7 +333,9 @@ class VisitController extends Controller
             if ($result_link['code'] == 200 && isset($result_link['code'])) {
                 Visit::whereId($v->id)->update(['status'=>2,'link_id'=>$result_link['data']['id'],'confirm_time'=> date('Y-m-d H:i:s')]);
                 self::pushdata($v->id,2);
-                Queue::push(new SyncNebula([$v->id],3,env('SENSE_NEBULA_WHITE_GROUP') ?? 1,1));
+                if( env('ONLINE')==0 ) {
+                    Queue::push(new SyncNebula([$v->id], 3, env('SENSE_NEBULA_WHITE_GROUP') ?? 1, 1));
+                }
                 continue;
             } else {
                 file_put_contents(storage_path('logs/AllocateGuest'),date('Y-m-d H:i:s').'访客id：'.$v->id.','.$result_link['message'].PHP_EOL,FILE_APPEND);
