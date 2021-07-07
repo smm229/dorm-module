@@ -16,6 +16,7 @@ use Modules\Dorm\Entities\DormitoryBuildingDevice;
 use Modules\Dorm\Entities\DormitoryElectric;
 use Modules\Dorm\Entities\DormitoryGroup;
 use Modules\Dorm\Entities\DormitoryNebula;
+use Modules\Dorm\Entities\DormitoryPanelCamera;
 use Modules\Dorm\Entities\DormitoryUsers;
 use Modules\Dorm\Entities\DormitoryUsersGroup;
 use Modules\Dorm\Http\Requests\DormitoryBuildingDeviceValidate;
@@ -317,7 +318,7 @@ class DeviceController extends Controller
                     return $this->response->error('分配失败，请联系管理员',201);
                 }
             }
-        }elseif ($request['type'] == 2){
+        }elseif ($request['type'] == 2){  //摄像头
           $BuildingDevice =   DormitoryBuildingDevice::where('id',$request['id'])->first();
           $nebula_ip = DormitoryNebula::where('senselink_sn',$BuildingDevice['senselink_sn'])->value('ip');
           if($nebula_ip) {
@@ -334,9 +335,18 @@ class DeviceController extends Controller
                   return $this->response->error('分配失败，请联系管理员',201);
               }
           }
-        }else{
+        }else{  //控制板
+            if(!$request->camera_id){
+                return $this->response->error('请选择关联摄像头',201);
+            }
             $data = $request->only('devicename','position','campusid','groupid','direction');
             if(  DormitoryBuildingDevice::where('id',$request['id'])->update($data)){
+                if(!$rela = DormitoryPanelCamera::where('panel_id',$request->id)->first()){
+                    DormitoryPanelCamera::insert(['panel_id'=>$request->id,'camera_id'=>$request->camera_id]);
+                }else{
+                    $rela->camera_id = $request->camera_id;
+                    $rela->save();
+                }
                 return $this->response->array(['status_code' => 200, 'message'=> '成功']);
             }
         }
@@ -545,12 +555,15 @@ class DeviceController extends Controller
                 return showMsg('添加失败');
             }
         }else{
+            if(!$request->camera_id){
+                return showMsg('请选择关联摄像头');
+            }
             $data = $request->only('type','devicename','campusid','groupid','host','deviceid','position');
             $data['groupid'] = DormitoryGroup::where('id',$data['groupid'])->value('groupid');
             try{
-                DB::transaction(function () use ($data){
-
-                    DormitoryBuildingDevice::insert($data);
+                DB::transaction(function () use ($data,$request){
+                    $panel_id = DormitoryBuildingDevice::insertGetId($data);
+                    DormitoryPanelCamera::insert(['panel_id'=>$panel_id,'camera_id'=>$request->camera_id]);
                 });
                 return showMsg('添加成功',200);
             }catch(\Exception $e){
